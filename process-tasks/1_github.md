@@ -1,4 +1,4 @@
-# What is github and why use it?
+# What is Github and why use it?
 
 We are going to develop our analysis code using [github](https://github.com/). Github is a repository for code. You can think of it as an excellent storage facility for all the code you write. It is excellent because:
 
@@ -11,3 +11,32 @@ We are going to develop our analysis code using [github](https://github.com/). G
 Using Github involves essentially 2 processes. You will install Git on your machine, and use it to track your changes locally. You will also 'push' changes to the online repository on the Github website, thus the online repository is essentially an online copy of your local folder. The online repository differs in that it can also include files you don't have locally, such as those pushed online by other contributors.
 
 # Github exercise 1 - setting up and cloning the project repository
+
+## setting up
+1. Create a [Github](https://github.com/) account
+2. [install git] on your own machine (https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) on your machine 
+
+## clone the project repository
+1. In your Github account (on the Github website), navigate to [https://github.com/kel-github/pathways-to-practice](https://github.com/kel-github/pathways-to-practice)
+2. Hit the 'Fork' button in the right hand corner, select your username. This essentially moves a copy of the repository to your online github account.
+3. Open a new terminal window on your own machine. Navigate to the folder where you would like to store the repository by using the command:
+
+```
+cd C:/pathfile/to-where-you-want-to-go
+
+```
+	or if you are on mac
+
+```
+
+cd ~/Documents/etc
+
+```
+
+4. Having navigated to the folder, enter the command: 
+
+```
+git clone https://github.com/kel-github/pathways-to-practice.git
+
+```
+You should now see a message telling you that the repository is downloading to your own machine.
