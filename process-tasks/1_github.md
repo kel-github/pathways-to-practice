@@ -14,7 +14,7 @@ Using Github involves essentially 2 processes. You will install Git on your mach
 
 ## setting up
 1. Create a [Github](https://github.com/) account
-2. [install git] on your own machine (https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) on your machine 
+2. [install git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) on your machine 
 
 ## clone the project repository
 1. In your Github account (on the Github website), navigate to [https://github.com/kel-github/pathways-to-practice](https://github.com/kel-github/pathways-to-practice)
@@ -23,12 +23,11 @@ Using Github involves essentially 2 processes. You will install Git on your mach
 
 ```
 cd C:/pathfile/to-where-you-want-to-go
-
-```
-	or if you are on mac
-
 ```
 
+or if you are on mac:
+
+```
 cd ~/Documents/etc
 
 ```

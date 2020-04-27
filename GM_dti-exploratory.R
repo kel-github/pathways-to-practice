@@ -26,25 +26,10 @@ sub.data <- GetDTIData(fpath, tracts)
 
 # 1. tidy dataframe up
 # --------------------------------------------------------------------------------
-# chapter 15 of https://r4ds.had.co.nz/factors.html will help you hear
+# chapter 15 of https://r4ds.had.co.nz/factors.html will help you here as will the commands View() and head()
 
 
 # 2. basic data check
 # --------------------------------------------------------------------------------
 # this will help you as a start https://rstudio-education.github.io/tidyverse-cookbook/transform-tables.html
 
-
-# 3. boxplots and qqplots - assess for outliers and normality
-# --------------------------------------------------------------------------------
-# see https://ggplot2.tidyverse.org/reference/geom_boxplot.html
-# and https://ggplot2.tidyverse.org/reference/geom_qq.html
-
-
-# 4. exclude outliers
-# --------------------------------------------------------------------------------
-# use filter https://dplyr.tidyverse.org/reference/filter.html
-
-
-# 5. Plot final distributions as a raincloud 
-# --------------------------------------------------------------------------------
-# example code here https://www-ncbi-nlm-nih-gov.ezproxy.library.uq.edu.au/pmc/articles/PMC6480976/
