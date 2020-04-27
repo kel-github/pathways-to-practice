@@ -14,22 +14,25 @@ Using Github involves essentially 2 processes. You will install Git on your mach
 
 ## setting up
 1. Create a [Github](https://github.com/) account
-2. [install git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) on your machine 
+2. [install git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) on your machine.
+
+   **Note: If you are a windows user, then I recommend you install Git using the [Git For Windows](https://gitforwindows.org/) option, which is mentioned on the above page. All future references in this wiki to using 'Terminal' would instead apply to using the git for windows app.**
 
 ## clone the project repository
 1. In your Github account (on the Github website), navigate to [https://github.com/kel-github/pathways-to-practice](https://github.com/kel-github/pathways-to-practice)
 2. Hit the 'Fork' button in the right hand corner, select your username. This essentially moves a copy of the repository to your online github account.
-3. Open a new terminal window on your own machine. Navigate to the folder where you would like to store the repository by using the command:
-
-```
-cd C:/pathfile/to-where-you-want-to-go
-```
-
-or if you are on mac:
+3. Open a new Terminal window on your own machine. Navigate to the folder where you would like to store the repository by using the command:
 
 ```
 cd ~/Documents/etc
 
+```
+
+or if you are on PC:
+
+
+```
+cd C:/pathfile/to-where-you-want-to-go
 ```
 
 4. Having navigated to the folder, enter the command: 
