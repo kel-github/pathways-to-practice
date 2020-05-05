@@ -1,7 +1,6 @@
-# written by K. Garner and Georgia Marsh, 2020
-# this code reads in the DTI data, tidies it, plots boxplot and qqplots to 
-# detect outliers and determine normality. We then remove outliers and save the
-# remaining data as a csv file.
+# written by K. Garner, 2020
+# this code reads in the DTI data, tidies it, plots the chosen tracts as a 
+# raincloud plot
 
 rm(list=ls())
 
