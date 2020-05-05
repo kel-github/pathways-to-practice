@@ -105,11 +105,121 @@ RecodeMultiData <- function(data){
   data$trial_num <- as.factor(data$trial_num)
   data$run <- as.factor(data$run)
   data <-  data %>% group_by(sub, sess, run, trial_num) %>%
-                   filter(cond == "1" | cond == "2" | (cond == "3" & length(RT) > 1)) %>%
-                   mutate(mult_cond = ifelse(cond == "3", ifelse(RT == max(RT), "multi-second", "multi-first"), "single"))
+                    filter(cond == "1" | cond == "2" | (cond == "3" & length(RT) > 1)) %>%
+                    mutate(mult_cond = ifelse(cond == "3", ifelse(RT == max(RT), "multi-second", "multi-first"), "single"))
   
   data
 }
+
+GetPracticeDataMulti <- function(fpath){
+  # read in the practice multitask data, tidy up, and number the trials/blocks by each condition
+  # fpath = the folder location of the data
+  # outputs a dataframe
+  
+  # notes about data: 2 blocks per session
+  # will make a new column that breaks up the total number of blocks into one vector
+  # For each session, participants completed 56 blocks of 18 trials, for a total of
+  # 1,008 trials, resulting in 3,024 training trials overall. To ensure that participants retained familiarity with the timings of the task as presented in the
+  # scanner, between two and four of the blocks in each session used long
+  # ITI timings.
+  # will therefore split each condition into 9 x 112 trials, and clean from that 
+  data <- read.csv( paste(fpath, 'train_group_training_data.csv', sep="/"), header=TRUE )
+  # now make it tidy
+  RT.data <- data %>% select( c(sub, block, rest_block, trial_num, cond, shape_RT, sound_RT)) %>%
+                      pivot_longer(c('shape_RT', 'sound_RT'), names_to = "task", values_to="RT") %>%
+                      mutate(task = fct_recode(task, 
+                                               "shape" = "shape_RT",
+                                               "sound" = "sound_RT"))
+  
+  acc.data <- data %>% select( c(sub, block, rest_block, trial_num, cond, shape_stim, shape_resp, sound_stim, sound_resp)) %>%
+                       mutate(shape_acc = (shape_stim == shape_resp)*1,
+                              sound_acc = (sound_stim == sound_resp)*1 ) %>%
+                       select( c(sub, block, rest_block, trial_num, cond, shape_acc, sound_acc) ) %>%
+                       pivot_longer(c('shape_acc', 'sound_acc'), names_to = "task", values_to="acc") %>%
+                       mutate(task = fct_recode(task, 
+                                                "shape" = "shape_acc",
+                                                "sound" = "sound_acc")) 
+  # hook up the RT and the acc data, and make sure the trial order is correct
+  data <- inner_join(RT.data, acc.data, by=c("sub", "block", "rest_block", "trial_num", "cond", "task")) %>%
+          arrange(sub, cond, block, rest_block, trial_num) %>%
+          mutate(cond_trial = rep(1:1008, each = 2, times = 3*50),
+                 cond_block = rep(1:9, each = 112*2, times= 3*50)) %>%
+          select(c(sub, cond_block, cond_trial, cond, task, RT, acc)) %>%
+          drop_na()
+  
+  data
+}
+
+
+GetPracticeDataVisSearch <- function(fpath){
+  # read in the visual search data, tidy up, and number the trials/blocks by each condition
+  # fpath = the folder location of the data
+  # outputs a dataframe
+  
+  # notes about data: 2 blocks per session
+  # will make a new column that breaks up the total number of blocks into one vector
+  # For each session, participants completed 56 blocks of 18 trials, for a total of
+  # 1,008 trials, resulting in 3,024 training trials overall. To ensure that participants retained familiarity with the timings of the task as presented in the
+  # scanner, between two and four of the blocks in each session used long
+  # ITI timings.
+  # will therefore split each condition into 9 x 112 trials, and clean from that 
+  data <- read.csv( paste(fpath, 'control_group_training_data.csv', sep="/"), header=TRUE ) 
+  
+  # now make it tidy
+  data <- data %>% mutate(acc = (targ_or == resp)*1 ) %>%
+          select( c(sub, block, rest_block, trial_num, set_size, RT, acc) ) %>%
+          arrange(sub, set_size, block, rest_block, trial_num) %>%
+          mutate(cond_trial = rep(1:1008, times = 3*50),
+                 cond_block = rep(1:9, each = 112, times= 3*50)) %>%
+          select(c(sub, cond_block, cond_trial, set_size, RT, acc)) %>%
+          rename(cond = set_size)
+  data
+}
+
+
+GetPracticeMultiClean <- function(data){
+  # clean up the raw practice multitasking data by removing innacurate 
+  # responses and RT's < 200 ms | > 2*stdevs from 
+  # the mean for that subject, condition, and block
+  # inputs
+  # data = a data.frame output by GetPracticeDataMulti
+  # outputs
+  # clean.data
+  
+  clean.data <- data %>% filter(acc == 1) %>%
+                filter( RT > .250 ) %>%
+                group_by( sub, cond_block, cond ) %>%
+                filter( RT < (mean(RT)+2.5*sd(RT)))
+   clean.data
+}
+
+
+RecodePracticeMultiData <- function(data){
+  # this function takes the practice multitasking data,
+  # filters out any multitask trials where both tasks were not performed correctly
+  # it then adds condition classification mult_cond -> single (single task), first-multi (first task executed)
+  # and second multi (second task executed)
+  # the input is the dataframe output by GetPracticeMultiClean
+  data <-  data %>% group_by(sub, cond_block, cond, cond_trial) %>%
+                    filter(cond == "1" | cond == "2" | (cond == "3" & length(RT) > 1)) %>%
+                    mutate(mult_cond = ifelse(cond == "3", ifelse(RT == max(RT), "multi-second", "multi-first"), "single"))
+  data
+}
+
+GetPracticeVisSearchClean <- function(data){
+  # take the practice visual search data, 
+  # filter out innaccurate trials
+  # filter out any RTs that are < 200 ms or are > 2.5*stdevs from the mean
+  # inputs = dataframe output by GetPracticeDataVisSearch
+  # outputs = dataframe
+  
+  clean.data <- data %>% filter(acc == 1) %>%
+                filter(RT > .25) %>%
+                group_by( sub, cond_block, cond ) %>%
+                filter( RT < ( mean(RT) + 2.5*sd(RT)) )
+  clean.data
+}
+
 
 ###### Notes to add to dti-explore files
 # 3. boxplots and qqplots - assess for outliers and normality
