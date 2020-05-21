@@ -54,6 +54,13 @@ sub.data$tract_name <- rep( c("LDLPFC_LACC", "LDLFPC_LCN", "LDLPFC_LPut", "LDLPF
 # --------------------------------------------------------------------------------
 s1.data <- sub.data %>% filter(session == 0)
 
+# 3. remove outliers
+# --------------------------------------------------------------------------------
+s1.data <- s1.data %>% filter(FA > 0.1) # because outlier FA tracts appear to be
+
+
+# at 0
+
 # 3. plot session 1 data
 # --------------------------------------------------------------------------------
 p <- ggplot(s1.data, aes(x=tract_name, y=FA, fill = tract_name, colour = tract_name)) +
