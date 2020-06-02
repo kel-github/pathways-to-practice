@@ -100,5 +100,3 @@ abline(h=1, lty=2) # data suggests a 3 factor solution
 orth.fit.3.fact <- principal(mhl.mat, factors=3, rotation="varimax")
 print.psych(orth.fit.3.fact, cut=0.3, sort=TRUE)
 
-# say hello world
-print("hello world")
