@@ -2,10 +2,10 @@
 # This code contains the functions required to wrangle data into
 # tidy form for the project 'pathways-to-practice'
 
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working directory to the location of this file
+#setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working directory to the location of this file
 # source files and load packages
 # ------------------------------------------------------------------
-library(tidyverse)
+#library(tidyverse)
 
 # define functions
 # ------------------------------------------------------------------

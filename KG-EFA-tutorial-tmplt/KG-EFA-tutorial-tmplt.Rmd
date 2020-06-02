@@ -1,0 +1,255 @@
+---
+title: "A tutorial on using Exploratory Factor Analysis in R"
+author: "[Kelly Garner](https://github.com/kel-github)"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+mail: "getkellygarner@gmail.com"
+github: "kel-github"
+output:
+  epuRate::epurate:
+    toc: TRUE
+    number_sections: FALSE
+    code_folding: "hide"
+---
+
+
+<br><br>
+
+## Running an exploratory factor analysis in R
+
+> This tutorial will take you through the steps of running an exploratory analysis, using the DTI data collected as part of Garner & Dux (2015). You will go through exploratory data analysis and cleaning, preparing a correlation matrix, determing the number of factors, rotating the factors to increase intepretability, and computing individual scores for each factor, given their scores on the measured variables (i.e. the data we put into the factor analysis).
+<br>
+
+# Data exploration and cleaning
+***
+First we will load the libraries and source the files that we will require to do the analysis...
+```{r, message=FALSE, warning=FALSE}
+library(corpcor)
+library(GPArotation)
+library(psych)
+library(ggcorrplot)
+library(tidyverse)
+library(cowplot)
+library(GGally)
+library(wesanderson)
+source("../KG_data-wrangling.R")
+source("../R_rainclouds.R")
+library(rmarkdown)    # You need this library to run this template.
+library(epuRate)      # Install with devtools: install_github("holtzy/epuRate", force=TRUE)
+```
+
+and load in our data. Note that my tracts of interest are different to yours.
+```{r, echo=FALSE}
+# My tracts of interest are based on: https://pubmed.ncbi.nlm.nih.gov/25740516/#&gid=article-figures&pid=figure-2-uid-1
+fpath <- '~/Dropbox/QBI/pathways-to-practice/dti-data/' # filepath to where the data lives
+tracts <- list(c("Superior_Frontal_gyrus_dorsolateral_Left",   "Caudate_nucleus_Left"), # amend this to contain which tracts you seek
+               c("Inferior_frontal_gyrus_opercular_part_Left", "Caudate_nucleus_Left"),
+               c("Supplementary_motor_area_Left",              "Caudate_nucleus_Left"),
+               c("Inferior_Parietal_gyrus_Left",               "Caudate_nucleus_Left"),
+               c("Superior_Frontal_gyrus_dorsolateral_Left",   "Lenticular_nucleus_putamen_Left"), # amend this to contain which tracts you seek
+               c("Inferior_frontal_gyrus_opercular_part_Left", "Lenticular_nucleus_putamen_Left"),
+               c("Supplementary_motor_area_Left",              "Lenticular_nucleus_putamen_Left"),
+               c("Inferior_Parietal_gyrus_Left",               "Lenticular_nucleus_putamen_Left"),
+               c("Superior_Frontal_gyrus_dorsolateral_Right",   "Caudate_nucleus_Right"), # amend this to contain which tracts you seek
+               c("Inferior_frontal_gyrus_opercular_part_Right", "Caudate_nucleus_Right"),
+               c("Supplementary_motor_area_Right",              "Caudate_nucleus_Right"),
+               c("Inferior_Parietal_gyrus_Right",               "Caudate_nucleus_Right"),
+               c("Superior_Frontal_gyrus_dorsolateral_Right",   "Lenticular_nucleus_putamen_Right"), # amend this to contain which tracts you seek
+               c("Inferior_frontal_gyrus_opercular_part_Right", "Lenticular_nucleus_putamen_Right"),
+               c("Supplementary_motor_area_Right",              "Lenticular_nucleus_putamen_Right"),
+               c("Inferior_Parietal_gyrus_Right",               "Lenticular_nucleus_putamen_Right")
+)  # has to be written exactly as is written in the list file
+sub.data <- GetDTIData(fpath, tracts)
+
+# 1. name the tracts
+# --------------------------------------------------------------------------------
+N_tracts = 16
+sub.data$tract_name <- rep( c("LDLPFC_LCN", "LIFJ_LCN", "LSMA_LCN", "LIPL_LCN", "LDLPFC_LPut", "LIFJ_LPut", "LSMA_LPut", "LIPL_LPut",
+                              "RDLPFC_RCN", "RIFJ_RCN", "RSMA_RCN", "RIPL_RCN", "RDLPFC_RPut", "RIFJ_RPut", "RSMA_RPut", "RIPL_RPut"),
+                               times = length(sub.data$sub)/N_tracts )
+
+
+# 2. get the data from the 1st session and label the factors
+# --------------------------------------------------------------------------------
+sub.data <- sub.data %>% distinct(sub, tract_name, .keep_all = TRUE) # just removing some duplicate records
+sub.data$sub <- as.factor(sub.data$sub) 
+
+# get s1 data
+s1.data <- sub.data %>% filter(session == 0)
+s1.data$sub <- as.factor(s1.data$sub)
+# because we lost some session 1 DTI data in the great back up miss of 2014, I am going to work out who does not have session 1 data, and I'll add their session 2 data to this dataframe
+missed.subs <- unique(sub.data$sub)[!(unique(sub.data$sub) %in% unique(s1.data$sub))]
+s1.data <- rbind(s1.data, sub.data[sub.data$sub %in% missed.subs, ])
+
+# now I can proceed to label the rest of the factors
+s1.data$group <- as.factor(s1.data$group)
+levels(s1.data$group) <- c("practice", "control")
+s1.data$session <- as.factor(s1.data$session)
+levels(s1.data$session) <- c("pre", "post")
+s1.data$tract_name <- as.factor(s1.data$tract_name)
+
+# 3. remove known outliers
+# --------------------------------------------------------------------------------
+# as I know tract values should be > 0, I am removing participants who score 0 on a tract
+s1.data <- s1.data %>% filter(FA > 0.01) 
+
+# now, show the data
+s1.data %>% head(5)
+```
+<br>
+
+
+## Cleaning up the data
+***
+First, we want to look at the data we are putting into the factor analysis, in this case the FA values for our DTI tracts of interest. 
+
+We will first check each of our variables for outliers (otherwise known as **univariate outliers**), we will then check for **nonlinearity and heteroscedasticity**, **normality**, **multivariate outliers**, and lastly, **multicollinearity and singularity**. We will go through each of these terms as we deal with the data.
+<br>
+
+## Check for Univariate Outliers
+***
+First we want to make sure that each of our variables, i.e. each of our tracts, contain sensible data points. As we are looking at the values of each variable on its own, not in conjunction with other variables, we call this looking for **univariate outliers**
+
+To get a good idea of the distributions of each variable, its a good idea to plot them in a way that provides information about the distribution of the variables as well as possible outlier values.
+
+Below is a raincloud plot of the tract data. Each row is a tract (named on the y axes). You can see the density of each tract's data. You are looking to see that these look roughly normally distributed. Each participant's FA value is one dot on the plot. A boxplot laid over the top shows you the median, and the inter-quartile range. The boxplot helps you spot outliers.
+
+```{r, warning=FALSE, fig.align='center', fig.cap="Fig 1: showing densities, data points and boxplots for the FA tracts of interest"}
+ggplot(s1.data, aes(x=tract_name, y=FA, fill = tract_name, colour = tract_name)) +
+            geom_flat_violin(position = position_nudge(x = .25, y = 0), adjust =2, trim =
+                     TRUE) +
+            geom_point(position=position_jitter(width=.15), size=.25) +
+            geom_boxplot(aes(x = tract_name, y = FA), outlier.shape = NA,
+                          alpha = 0.3, width = .1, colour = "BLACK") +
+            scale_y_continuous(limits=c(0.2,0.6)) + coord_flip() +
+            ylab('FA') + xlab('connection') + theme_cowplot() + 
+            guides(fill = FALSE, colour = FALSE) +
+            theme(axis.title.x = element_text(face = "italic"))
+```
+
+
+<br>
+As you can see, RSMA_RPut, RSMA_RCN, RIFJ_RCN, RDLPFC_RCN, LSMA_Lut, LSMA_LCN all appear to have one outlier. We will identify which subjects are outliers according to a more formal classification - i.e. those subjects that have a z-score greater than 3.29 on any measure (as recommended by Tabachnick & Fidell, 4th Ed, p 68).
+
+```{r}
+outliers <- s1.data %>% group_by(tract_name) %>%
+                    filter(((FA - mean(FA))/sd(FA)) > 3.29)
+outliers
+
+```
+
+
+According to this criteria, only subject 150 meets this criteria, for one tract (RIFJ -> RCN). We make a note of this, and will decide whether or not to exclude this subject in accordance with other criteria which we define below.
+
+<br>
+
+## Check for nonlinearity and heteroscedasticity
+Now we will test for 2 assumptions made in our factor analysis, that of linearity and heteroscedasticity
+
+> Linearity assumes that there is a straight line relationship between our variables. This is important because Pearson's r, which forms the basis of our analysis, cannot detect non-linear relationships (i.e. curved or U-shaped, as opposed to straight lines)
+
+We will assess linearity by visually inspecting scatterplots of each pair of our variables. To use the function that will allow me to do this, you can see in the code that I also have to convert the data from long to wide format
+
+```{r, fig.align='center', fig.cap="Fig 2. Showing bivariate correlations between each pair of variables", fig.height=15, fig.width=15}
+
+# use tidyverse functionality to convert from long to wide, drop people who have an NA value on some measure
+s1.dat.wide <- s1.data %>% select(-c(group, session, tract_start, tract_end)) %>%
+                           pivot_wider(id_cols=sub, names_from=tract_name, values_from=FA) %>%
+                           drop_na()
+# apply the pairs() function to my new dataframe - see https://www.rdocumentation.org/packages/graphics/versions/3.6.2/topics/pairs for function documentation 
+s1.dat.wide %>% select(-sub) %>% pairs()
+```
+
+As you can see, there are no obvious departures from there being a (varying in strength) linear relationships between the variables - or at least, there are no relationships between variables that could not be approximated with a straight line.
+
+> Heteroscedasticity assumes, in our case, where we have grouped variables (i.e. each tract is a group), that the variance across all our tracts is approximately comparable.
+
+One easy way to assess whether our data meets this assumption is to check the ratio of the largest relative to the smallest variances in our dataset (see Tabachnick & Fiddell, p. 80). Ideally, we want to make sure that we have ratio values no greater than 10.
+
+```{r}
+
+# get the variance of each tract
+vars <- s1.data %>% select(c(tract_name, FA)) %>%
+                    group_by(tract_name) %>%
+                    summarise(Var=var(FA))
+# divide the largest by the smallest
+sprintf("ratio of largest to smallest variances: %f", max(vars$Var)/min(vars$Var))
+
+
+```
+
+Our value is nice and low, so we can proceed happily :)
+<br>
+## Normality
+
+> Now we want to check that our data are normally distributed, or normally distributed enough, for our analysis. It is more rare than you would think (at least in psychology) that we would find perfectly normally distributed variables. We largely want to make sure that there is nothing here that appears to be a gross violation of the assumption of normality.
+
+The easiest way to check for normaility is with a qqplot. A qqplot plots the quantiles of your distribution (i.e. the point where 10% of your data lies, 20% and so on) along the y-axis, and the quantiles of a theoretical normal distribution on the x-axis. If your distribution is normal, it should form a diagonal line along the plot. If we lay our wishful diagonal line over the data, we can see how far our data deviates from this line.
+
+```{r fig.align='centre', fig.cap="Fig 3: QQPlots for our variables of interest"}
+
+qqp <- ggplot(s1.data, aes(sample=sqrt(FA))) +
+              stat_qq() + stat_qq_line() + facet_wrap(.~tract_name)
+qqp
+
+```
+This is super nice! For the first time in my history of data analysis, I see no major violations of normality that would cause me worry here. There are a couple of points that are away from the line, but nothing so consistent where a transformation would benefit the distribution's spread.
+
+<br>
+## Check for multivariate outliers
+
+> Whereas a univariate outlier is an extreme or odd score on one variable, a multivariate outlier is an extreme score on multiple variables, for example, does one subject have unusual values across all, or a subset of the tracts?
+
+To check this assumption, we compute the Mahalanobis distance. The Mahalanobis distance is as follows: imagine if you were plotting a figure that had as many axes as you have variables, so in this case, instead of the usual 2 axes (x & y), we would have a figure with 16 axes (very difficult to plot!). Now, imagine that 1 person is one point in this 16 dimensional plot (where their point lands corresponds to their score on each of the 16 axes). The Mahalanobis distance is just how far each person's score would be from the average (or central) point in this 16 dimensional space. We want to make sure that no Mahalanobis score is significantly different from the rest of the pack.
+
+```{r, fig.align='centre', fig.cap="Fig 4: histogram of Mahalanobis distance scores"}
+
+mhl.mat <- as.matrix(s1.dat.wide[,2:length(colnames(s1.dat.wide))]) # here I have just turned the data into a matrix so that the subsequent functions I call can work with it
+mhl.cov <- cov(mhl.mat) # here I get the covariance matrix
+mhl.dist <- mahalanobis(mhl.mat, colMeans(mhl.mat), mhl.cov) # now calc the M dist
+hist(mhl.dist, breaks = 20, col=wes_palette("IsleofDogs1")[1])
+
+```
+
+The only value that really looks like it could be concerning is the one up at 30. However, we would like a more formal test to see whether we should be concerned about this value (and the rest), by asking what is the probability of getting each of our Mahalanobis distance scores by chance? If any of them have a super low probability, i.e. are less that .1 % likely (p< .001), we will classify them as a multivariate outliers. Luckily we can use the chi square distribution as a model of the distance scores that we can expect to get by chance, so we just ask, what value would a distance score need to be greater than, to have less than a .1% chance of occuring, given our current degrees of freedom? (where our degrees of freedom is n-1).
+
+```{r}
+
+sprintf("For a Mahalanobis to be less that .1 per cent likely to have occured by chance, given our degrees of feedom (%f), it has to be a value greater than %f", length(mhl.dist)-1, qchisq(.001, df=length(mhl.dist)-1))
+
+```
+
+Given that none of our values are greater than this value, we can keep all our datapoints, including the data from participant 150, who scored as an outlier on a single variable. This is great - we want to keep as much data as we can!
+<br>
+## Multicollinearity and singularity
+Now we know we have nice, clean data inputs, we have one more thing to check before we move onto our factor analysis.
+
+> We want to make sure that our variables are correlated with one another, but not too little, nor too much. Kind of baby bear style.
+
+We have a **multicollinearity** if 2 of our variables are supremely highly correlated (say, to an r value of > .9). If you think about it, it makes sense that we wouldn't want this happening our factor analysis. For example, imagine that for one variable I record your height, and for the other, I record the highest point on which you can touch the wall. You can see how these two variables are measuring basically the same thing (how high you are, give or take some differences in arm span). When this happens, the second variable adds nothing new to your data, so its redundant to keep it in.
+
+We have a **singularity** when one variable is a perfect predictor of another. Imagine I recorded your age in years, and then I counted how many birthdays you have had. These are the same thing. Again, you can see why this adds redundancy to your data.
+
+So when testing this assumption, we want to check that all our correlations between variables are |r| < .9. First, we'll take a look at our correlation matrix.
+
+```{r, fig.align='centre', fig.cap="Correlation matrix for our tract variables"}
+
+cor.mat <- cor(mhl.mat)
+cor.plt <- ggcorrplot(cor.mat, 
+                      hc.order = FALSE,
+                      type = "upper",
+                      outline.color = "white",
+                      ggtheme = ggplot2::theme_gray,
+                      colors = c("#6D9EC1", "white", "#E46726")
+           )
+cor.plt
+```
+
+As you can see, this looks promising. None of our correlation strengths really appear to be in the super red or blue zone. We can also check this more formally. To do this, we'll get R to tell us whether its true or false that the absolute value in each cell is above .9 (remember that the diagonal reflects how much a variable correlates with itself, and so it should always be true - i.e. 1)
+
+```{r}
+
+abs(cor.mat) > .9
+
+```
+
+> As you can see, we have no multicollinearity or singularity, so we are good to proceed with our factor analysis!
