@@ -181,6 +181,7 @@ sprintf("ratio of largest to smallest variances: %f", max(vars$Var)/min(vars$Var
 
 Our value is nice and low, so we can proceed happily :)
 <br>
+
 ## Normality
 
 > Now we want to check that our data are normally distributed, or normally distributed enough, for our analysis. It is more rare than you would think (at least in psychology) that we would find perfectly normally distributed variables. We largely want to make sure that there is nothing here that appears to be a gross violation of the assumption of normality.
@@ -197,6 +198,7 @@ qqp
 This is super nice! For the first time in my history of data analysis, I see no major violations of normality that would cause me worry here. There are a couple of points that are away from the line, but nothing so consistent where a transformation could benefit the distribution's spread.
 
 <br>
+
 ## Check for multivariate outliers
 
 > Whereas a univariate outlier is an extreme or odd score on one variable, a multivariate outlier is an extreme score on multiple variables, for example, does one subject have unusual values across all, or a subset of the tracts?
@@ -223,7 +225,9 @@ sprintf("For a Mahalanobis to be less that .1 per cent likely to have occured by
 Given that none of our values are greater than this value, we can keep all our datapoints, including the data from participant 150, who scored as an outlier on a single variable. This is great - we want to keep as much data as we can!
 
 <br>
+
 ## Multicollinearity and singularity
+
 Now we know we have nice, clean data inputs, we have one more thing to check before we move onto our factor analysis.
 
 > We want to make sure that our variables are correlated with one another, but not too little, nor too much. Kind of baby bear style.
@@ -257,6 +261,7 @@ abs(cor.mat) > .9
 > As you can see, we have no multicollinearity or singularity, so we are good to proceed with our factor analysis!
 
 <br>
+
 # Exploratory Factor Analysis
 
 The following is how I think of a factor analysis: At the moment, I have 16 tracts/variables. As I mentioned above, one way to represent this is to create a figure with 16 axes, where each point in this new 16 dimensional space reflects one participant's score on all 16 variables. Usually, in a 2-dimensional figure, where there is only an x-axis and a y-axis, the location of a datapoint $d$ can be given by a vector containing 2 elements, 1 for the position on the x-axis and 1 for the position on the y axis: $d=[x,y]$. In the 16 dimensional space, the position of a datapoint would be given by a vector containing 16 datapoints $d=[v_1,v_2,...v_{16}]$. However, 16 is a high number of axes to use, to give the position of one datapoint (or each of our datapoints). In a factor analysis, what we are essentially asking is: what is the smallest number of axes (aka factors) I can use and still describe my data? So really, a factor is an axes along which you can plot your data, and from a factor analysis you get a lower number of axes/factors to represent your data than you had originally.
