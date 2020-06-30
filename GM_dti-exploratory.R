@@ -66,51 +66,47 @@ sub.data$tract_names <- c("lDLPFC_lCN", "rDLPFC_rCN", "lDLPFC_rCN", "rDLPFC_lCN"
 # --------------------------------------------------------------------------------
 # this will help you as a start https://rstudio-education.github.io/tidyverse-cookbook/transform-tables.html
 
-sub.data %>%
-  arrange(desc(FA))
-# Highest FA recorded for rTHA_rSOG tract
-sub.data %>%
-  group_by(group, session) %>%
-  summarise(avg = mean(FA))
-# Created a tibble that represents the mean FA values separated by 
-# group and session, revealed that the practice FA means are marginally
-# higher than the control with a slight increase in FA post-trial across all tracts
-summary(sub.data$FA)
-# Quick summary of the FA variable, shows overall mean, minimum and maximum, etc.
-
-agg = aggregate(sub.data,
-                by = list(sub.data$group, sub.data$session),
-                FUN = mean)
-# I thought this line of code would be helpful to figure out mean FAs by group and session
-# but it didn't seem to work
-  
-sub.data %>%
-  count(session)
-# 1880 data points pre-trial, 1760 post-trial
-
-sub.data %>%
-  count(group)
-# 1820 points in practice, 1820 points in control
-
 summary(sub.data)
 # Put the above data into one line of code
+
+summary <- sub.data %>% group_by(group, session) %>%
+  summarise(N=length(unique(sub)))
+
+# group
+# session
+# N
+# 1	practice	pre-trial	45
+# 2	practice	post-trial	39
+# 3	control	pre-trial	45
+# 4	control	post-trial	46
+
+sub.data <- sub.data %>% distinct(sub, tract_names, .keep_all = TRUE)
+
+# get s1 data
+s1.data <- sub.data %>% filter(session == 0)
+s1.data$sub <- as.factor(s1.data$sub)
+# because we lost some session 1 DTI data in the great back up miss of 2014, I am going to work out who does not have session 1 data, and I'll add their session 2 data to this dataframe
+missed.subs <- unique(sub.data$sub)[!(unique(sub.data$sub) %in% unique(s1.data$sub))]
+s1.data <- rbind(s1.data, sub.data[sub.data$sub %in% missed.subs, ])
+
+summary <- sub.data %>% group_by(group) %>%
+  summarise(N=length(unique(sub)))
+
+# group
+# N
+# 1	practice	49
+# 2	control	47
 
 sub.data %>%
   select(everything()) %>%
   summarise_all(funs(sum(is.na(.))))
 # This line of code aimed to count the number of NAs across
 # multiple columns - apparently there are no missing values
+# sub group session tract_start tract_end FA tract_names
+# 1   0     0       0           0         0  0           0
 
-which(sub.data$FA == 0.0000) %>%
-  group_by(sub.data$session)
+which(sub.data$FA == 0.0000, arr.ind=TRUE)
 # This line found FA values with a 0 value, I tried to add a group by function
 # but I couldn't quite figure out how to do it
 
-attach(sub.data)
-mytable <- table(group,session) # A will be rows, B will be columns 
-mytable # print table 
-margin.table(mytable, 1)
-group
-margin.table(mytable, 2) # B frequencies (summed over A)
-session
-# Just a couple frequency tables and whatnot, Lizzy helped me out with these
+
