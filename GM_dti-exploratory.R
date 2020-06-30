@@ -55,11 +55,11 @@ sub.data$sub <- as.factor(sub.data$sub)
 sub.data$session <- as.factor(sub.data$session)
 levels(sub.data$session) <- c("pre-trial", "post-trial")
 
-sub.data$tract_names <- c("lDLPFC_lCN", "rDLPFC_rCN", "lDLPFC_rCN", "rDLPFC_lCN",
-                          "lDLPFC_lLNP", "rDLPFC_rLNP", "lDLPFC_rLNP", "rDLPFC_lLNP",
-                          "lDLPFC_lSOG", "rDLPFC_rSOG", "lDLPFC_rSOG", "rDLPFC_lSOG",
-                          "lCN_lSOG", "rCN_rSOG", "lCN_rSOG", "rCN_lSOG",
-                          "lTHA_lSOG", "rTHA_rSOG", "lTHA_rSOG", "rTHA_lSOG")
+sub.data$tract_names <- c("lDLPFC_lCN", "lDLPFC_rCN", "rDLPFC_rCN", "rDLPFC_lCN",
+                          "lDLPFC_lLNP", "lDLPFC_rLNP", "rDLPFC_rLNP", "rDLPFC_lLNP",
+                          "lDLPFC_lSOG", "lDLPFC_rSOG", "rDLPFC_rSOG", "rDLPFC_lSOG",
+                          "lCN_lSOG", "lCN_rSOG", "rCN_rSOG", "rCN_lSOG",
+                          "lTHA_lSOG", "lTHA_rSOG", "rTHA_rSOG", "rTHA_lSOG")
 
 
 # 2. basic data check
