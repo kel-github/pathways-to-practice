@@ -431,4 +431,5 @@ regression.dat <- data.frame(sub = s1.dat.wide$sub,
 
 # now, show the data
 regression.dat %>% head(5)
+write.csv(regression.dat, '../dti-data/KG_2factSol_subdata.csv')
 ```
