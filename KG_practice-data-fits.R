@@ -171,4 +171,4 @@ exp(intercept)*x^beta*exp(c)
 # for each model, extract the exponent parameters 
 # because its a power function, the first derivative is just the same as the function
 prac.coefs <- rbind(get.coef.exps(pwr.model.MT), get.coef.exps(pwr.model.VS))
-write_csv(prac.coefs, paste(fpath, 'practice-pwr-coeffs.csv', sep=''))    
+write_csv(prac.coefs, paste(fpath, 'practice-pwr-coeffs.csv', sep='/'))    

@@ -8,6 +8,7 @@ library(cowplot)
 source("R_rainclouds.R")
 source("KG_data-wrangling.R")
 tract_data = 'dti-data/KG_2factSol_subdata.csv'
+
 ## --------------------------------------------------------------------------
 # load behavioural data and relabel
 source("KG_behaviour-wrangles.R")
@@ -113,9 +114,10 @@ ggplot(reg.dat.P, aes(x=cort_to_CN, y=cvRatio)) +
 # run models on pre-data
 CV <- glm(CV ~ cort_to_CN*cort_to_Put*mult_cond, data=reg.dat.CV)
 summary(CV)
+write_csv(reg.dat.CV, paste('raw-behav-data','CV-data.csv', sep='/'))
 
 P <- glm(cvRatio ~ cort_to_CN*cort_to_Put*condition, data=reg.dat.P)
 summary(P)
-
+write_csv(reg.dat.P, paste('raw-behav-data','P-data.csv', sep='/'))
 
 
