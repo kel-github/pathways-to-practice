@@ -33,6 +33,16 @@ p.chnge <- CV.dat %>% group_by(sub) %>%
                      MT2=CV[mult_cond == "multi-second"]/CV[mult_cond=="single"]) %>%
            pivot_longer(c('MT1', 'MT2'), names_to = "condition", values_to="cvRatio")
 
+# get the diff in mu RT per participant
+RT.dat <- dat.recoded %>% group_by(sub, sess, mult_cond) %>%
+                          summarise(RTmu = mean(RT),
+                          RTsd = sd(RT)) %>%
+                          group_by(sub, sess) %>%
+                          transmute(MT1=RTmu[mult_cond == "multi-first"]/RTmu[mult_cond=="single"],
+                                    MT2=RTmu[mult_cond == "multi-second"]/RTmu[mult_cond=="single"]) %>%
+                                    pivot_longer(c('MT1', 'MT2'), names_to = "condition", values_to="muRatio") %>%
+                          unique()
+
 
 ## --------------------------------------------------------------------------
 # plot values to check distributions
@@ -57,6 +67,16 @@ PC.p <- ggplot(p.chnge, aes(x=condition, y=cvRatio, fill = condition, colour = c
                        ylab('condition') + xlab('CV ratio') + theme_cowplot() + 
                        guides(fill = FALSE, colour = FALSE) +
                        theme(axis.title.x = element_text(face = "italic"))
+RT.p <- ggplot(RT.dat,  aes(x=condition, y=muRatio, fill = condition, colour = condition)) +
+                        geom_flat_violin(position = position_nudge(x = .25, y = 0), adjust =2, trim =
+                              TRUE) +
+                        geom_point(position=position_jitter(width=.15), size=.25) +
+                        geom_boxplot(aes(x = condition, y = muRatio), outlier.shape = NA,
+                              alpha = 0.3, width = .1, colour = "BLACK") +
+                        scale_y_continuous(limits=c(0,3)) + coord_flip() +
+                        ylab('condition') + xlab('Mu ratio') + theme_cowplot() + 
+                        guides(fill = FALSE, colour = FALSE) +
+                        theme(axis.title.x = element_text(face = "italic"))
 
 ## --------------------------------------------------------------------------
 ## remove outliers (> | < mean +/- 3 sd)
@@ -77,6 +97,15 @@ p.chnge <- p.chnge %>% group_by(condition) %>%
                                filter(cvRatio < (mean(cvRatio)+(sd.crit*sd(cvRatio)))) %>%
                                filter(cvRatio > mean(cvRatio)-(sd.crit*sd(cvRatio))) 
 
+RT.dat$group = NA
+RT.dat$group[as.numeric(as.character(RT.dat$sub))<200] = 'practice'
+RT.dat$group[as.numeric(as.character(RT.dat$sub))>=200] = 'control'
+RT.dat$group <- as.factor(RT.dat$group)
+RT.dat <- na.omit(RT.dat)
+RT.dat <- RT.dat %>% group_by(condition) %>%
+                     filter(muRatio < (mean(muRatio)+(sd.crit*sd(muRatio)))) %>%
+                     filter(muRatio > (mean(muRatio)-(sd.crit*sd(muRatio)))) 
+
 ## --------------------------------------------------------------------------
 # add in the tract data and tidy up
 tract.dat <- read.csv(tract_data) %>% select(-X) 
@@ -85,6 +114,8 @@ reg.dat.CV <- inner_join(CV.dat, tract.dat, by=c('sub')) %>%
               unique() %>% na.omit
 reg.dat.P <- inner_join(p.chnge, tract.dat, by=c('sub')) %>%
               unique()  %>% na.omit()
+reg.dat.RT <- inner_join(RT.dat, tract.dat, by=c('sub')) %>%
+              unique() %>% na.omit() %>% filter(!sess %in% 'Post' )
 
 ## --------------------------------------------------------------------------
 # count how many participants we have for pre and post data
@@ -93,6 +124,10 @@ counts.CV <- reg.dat.CV %>% group_by(mult_cond) %>%
 
 counts.P <- reg.dat.P %>% group_by(condition) %>%
                      summarise(N=length(cvRatio))
+
+counts.RT <- reg.dat.RT %>% group_by(condition) %>%
+                         summarise(N=length(muRatio))
+
 ## --------------------------------------------------------------------------
 # plot the relationship between each regressor and the DV
 ggplot(reg.dat.CV, aes(x=cort_to_Put, y=CV)) +
@@ -110,6 +145,14 @@ ggplot(reg.dat.P, aes(x=cort_to_CN, y=cvRatio)) +
       geom_point(aes(color=group)) + 
       facet_wrap(~condition)
 
+
+ggplot(reg.dat.RT, aes(x=cort_to_Put, y=muRatio)) +
+  geom_point(aes(color=group)) +
+  facet_wrap(~condition)
+ggplot(reg.dat.RT, aes(x=cort_to_CN, y=muRatio)) +
+  geom_point(aes(color=group)) + 
+  facet_wrap(~condition)
+
 ## --------------------------------------------------------------------------
 # run models on pre-data
 CV <- glm(CV ~ cort_to_CN*cort_to_Put*mult_cond, data=reg.dat.CV)
@@ -120,4 +163,6 @@ P <- glm(cvRatio ~ cort_to_CN*cort_to_Put*condition, data=reg.dat.P)
 summary(P)
 write_csv(reg.dat.P, paste('raw-behav-data','P-data.csv', sep='/'))
 
-
+RT <- glm(muRatio ~ cort_to_CN*cort_to_Put*condition, data=reg.dat.RT)
+summary(RT)
+write_csv(reg.dat.RT, paste('raw-behav-data','RTmu-data.csv', sep='/'))

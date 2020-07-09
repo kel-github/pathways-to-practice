@@ -1,8 +1,8 @@
 ## Written by K. Garner, 2020
 ## takes the practice behavioural data, plots it by condition (and group),
 ## fits power and exponential functions to the data per participant, 
-## and then takes the average RMSE across participants, to find the best function
-## for the data
+## and then compares model fits, to find the best function
+## for the data, then extracts coefficients for each participant
 
 rm(list=ls())
 
