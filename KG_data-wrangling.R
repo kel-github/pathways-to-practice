@@ -221,4 +221,13 @@ GetPracticeVisSearchClean <- function(data){
 }
 
 
+get.coef.exps <- function(model){
+  # the input is a mixed model output from lmer
+  # assuming a function of y = exp(I+cond)*trial_num^beta
+  out <- data.frame(sub=rownames(coef(model)$sub),
+                    int=exp(coef(model)$sub[,3]),
+                    x=exp(coef(model)$sub[,1]),
+                    y=exp(coef(model)$sub[,2]))
+  out
+}
 
