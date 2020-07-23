@@ -13,9 +13,11 @@ tract_data = 'dti-data/KG_2factSol_subdata.csv'
 # load behavioural data and relabel
 source("KG_behaviour-wrangles.R")
 levels(dat.recoded$sess) <- c("Pre", "Post")
-
+dat.save.loc = 'cleaned-data'
+write_csv(dat.recoded, paste(dat.save.loc,'pre-data-for-CV.csv', sep='/'))
 # plus variables for later
 sd.crit = 3
+
 
 ## --------------------------------------------------------------------------
 # Computations
@@ -157,12 +159,12 @@ ggplot(reg.dat.RT, aes(x=cort_to_CN, y=muRatio)) +
 # run models on pre-data
 CV <- glm(CV ~ cort_to_CN*cort_to_Put*mult_cond, data=reg.dat.CV)
 summary(CV)
-write_csv(reg.dat.CV, paste('raw-behav-data','CV-data.csv', sep='/'))
+write_csv(reg.dat.CV, paste(dat.save.loc,'CV-data.csv', sep='/'))
 
 P <- glm(cvRatio ~ cort_to_CN*cort_to_Put*condition, data=reg.dat.P)
 summary(P)
-write_csv(reg.dat.P, paste('raw-behav-data','P-data.csv', sep='/'))
+write_csv(reg.dat.P, paste(dat.save.loc,'P-data.csv', sep='/'))
 
 RT <- glm(muRatio ~ cort_to_CN*cort_to_Put*condition, data=reg.dat.RT)
 summary(RT)
-write_csv(reg.dat.RT, paste('raw-behav-data','RTmu-data.csv', sep='/'))
+write_csv(reg.dat.RT, paste(dat.save.loc,'RTmu-data.csv', sep='/'))

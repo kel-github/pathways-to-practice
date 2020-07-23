@@ -86,7 +86,7 @@ clean.vis.search.data <- GetPracticeVisSearchClean(raw.vis.search.data)
 # we will average over each set of 12 trials (you can play with this value
 # and see what effect it has when you plot it below)
 # ----------------------------------------------------------------------------------
-width = 12
+width = 24
 roll.mu.multi <- rbind(     clean.multi.data %>% filter(mult_cond == "single") %>%
                                                   group_by( sub, cond ) %>%
                                                   mutate( move_mu = rollmean(RT, mean, k = width, fill = NA ) ),
