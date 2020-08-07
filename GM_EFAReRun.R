@@ -1,4 +1,4 @@
-
+# Written by K. Garner and Georgia Marsh, 2020
 # Re-run of factor analysis, etc. with removal of lTHA_rSOG, as per initial loadings
 # found within the EFA script
 # --------------------------------------------------------------------------------
@@ -91,12 +91,6 @@ s1.data.wide <- na.omit(s1.data.wide)
 s1.data.wide %>% select(-sub) %>% pairs()
 # Data quite busy, difficult to interpret, though no tracts look particularly out of the ordinary
 
-# Test data frame:
-df = df[,!(names(df) %in% drop)]
-df <- s1.data %>% select(-c(group, session, tract_start, tract_end)) %>%
-  pivot_wider(id_cols=sub, names_from=tract_names, values_from=FA) %>%
-  drop_na()
-
 # Variance and ratio
 # --------------------------------------------------------------------------------
 vars <- s1.data %>% select(c(tract_names, FA)) %>%
@@ -170,6 +164,9 @@ lapply(rotations, function(x) factanal(mhl.mat, factors=4, rotation=x))
 # Five factor solution:
 lapply(rotations, function(x) factanal(mhl.mat, factors=5, rotation=x))
 
+# Two factor solution reduces the 14 tracts to two factors that represent the multitasking network and visual
+# search network
+
 # Regression-like coefficients for weighting:
 # Two Factor Solution
 fact.solution <- factanal(mhl.mat, factors=2, rotation="varimax")
@@ -184,4 +181,3 @@ regression.dat <- data.frame(sub = s1.data.wide$sub,
                             
 # now, show the data
 regression.dat %>% head(5)
-
