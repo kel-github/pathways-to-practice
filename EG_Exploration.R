@@ -1,3 +1,10 @@
+# This code is for explroation of data re outliers, normality, heterogenetity etc.
+# mostly assumption checking and identifying anything that may need to be excluded.
+# 
+# This is to be run after the correlations and before the EFA code
+
+# written by K. Garner and E. Geary, August 2020
+
 devtools::install_github("holtzy/epuRate", force=TRUE)
 
 
@@ -78,6 +85,7 @@ spare<- s1.data
 # _____________________________________________________________________________________________________________
 
 # Densities, data points and boxplots for our FA of interest
+#-------------------------------------------------------------------------------
 ggplot(s1.data, aes(x=tract_names, y=FA, fill = tract_names, colour = tract_names)) +
   geom_flat_violin(position = position_nudge(x = .25, y = 0), adjust =2, trim =
                      TRUE) +
@@ -94,12 +102,14 @@ ggplot(s1.data, aes(x=tract_names, y=FA, fill = tract_names, colour = tract_name
 
 
 #Checking for outliers by looking at z-scores more than 3.29
+#-------------------------------------------------------------------------------
 outliers <- s1.data %>% group_by(tract_names) %>%
   filter(((FA - mean(FA))/sd(FA)) > 3.29)
 outliers
 #There are no outliers it seems
 
 #Bivariate Correlation charts
+#-------------------------------------------------------------------------------
 s1.dat.wide <- s1.data %>% select(-c(group, session, tract_start, tract_end)) %>%
   pivot_wider(id_cols=sub, names_from=tract_names, values_from=FA) %>%
   drop_na()
@@ -108,6 +118,7 @@ s1.dat.wide %>% select(-sub) %>% pairs()
 #These are kind of hard to interpret bc they're pretty busy. I think it's mostly okay though
 
 #Variance and ratio
+#-------------------------------------------------------------------------------
 vars <- s1.data %>% select(c(tract_names, FA)) %>%
   group_by(tract_names) %>%
   summarise(Var=var(FA))
@@ -117,12 +128,15 @@ sprintf("ratio of largest to smallest variances: %f", max(vars$Var)/min(vars$Var
 #Nice and under 10 number
 
 #qq plots for normality
+#-------------------------------------------------------------------------------
 qqp <- ggplot(s1.data, aes(sample=sqrt(FA))) +
   stat_qq() + stat_qq_line() + facet_wrap(.~tract_names)
 qqp
 ![qqplot2] ("documents/THESIS/pathways-to-practice/qqplot2.png")
 #Not looking too bad rACC_lCN is a bit wonky and rDLPFC_rACC starts low but I think all is well
 
+# Mahalanobis + correlation plot
+#-------------------------------------------------------------------------------
 mhl.mat <- as.matrix(s1.dat.wide[,2:length(colnames(s1.dat.wide))]) # here I have just turned the data into a matrix so that the subsequent functions I call can work with it
 mhl.cov <- cov(mhl.mat) # here I get the covariance matrix
 mhl.dist <- mahalanobis(mhl.mat, colMeans(mhl.mat), mhl.cov) # now calc the M dist
