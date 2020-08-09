@@ -1,3 +1,10 @@
+# This is the code for the actual exploratory factor analysis, for deteriming factor
+# structure etc.
+# 
+# This is to be run after the correlations and exploration code
+
+# written by K. Garner and E. Geary, August 2020
+
 library(corpcor)
 library(GPArotation)
 library(psych)
@@ -10,7 +17,7 @@ library(nFactors)
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 source("KG_data-wrangling.R")
 source("R_rainclouds.R")
-library(rmarkdown)    # You need this library to run this template.
+library(rmarkdown)   
 library(epuRate)
 
 #Data Loading + Cleaning
