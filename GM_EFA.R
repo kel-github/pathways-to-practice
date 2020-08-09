@@ -1,3 +1,4 @@
+# Written by K. Garner and Georgia Marsh, 2020
 # Exploratory Factor Analysis, ran after s1data_code script and Correlations script:
 
 # Optimal coordinates:
@@ -5,6 +6,7 @@ ev <- eigen(cor.mat) # get the eigenvalues using the correlation matrix
 ap <- parallel(subject=nrow(mhl.mat), var=ncol(mhl.mat), rep=1000, quantile=.05, model="factors") # run the parallel analysis
 nS <- nScree(x=ev$values, aparallel=ap$eigen$qevpea, criteria=0) # calculate the 95% values for the parallel analysis, plus the accelaration factor and the optimal coordinates
 plotnScree(nS, xlab="Eigenvalues")
+# Scree plot indicates that a two factor solution may be the most optimal
 
 # Factor analysis:
 factors = c(2,3,4,5,6)
