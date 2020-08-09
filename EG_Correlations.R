@@ -1,4 +1,9 @@
-# written by K. Garner and Elizabeth Geary, 2020
+# This code was written to ensure the N in pre and post conditions remained the same
+# also for the purpose of calculating correlations between sessions for each tract
+
+#This is to be run before the exploratory or efa code.
+
+# written by K. Garner and E. Geary, August 2020
 
 rm(list=ls())
 # install.packages("rstudioapi")
