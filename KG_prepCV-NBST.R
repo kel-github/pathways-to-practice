@@ -10,7 +10,7 @@ source("KG_data-wrangling.R")
 dat.save.loc = 'cleaned-data'
 save.names = c('CV-regressors-multi-first','CV-regressors-multi-second')
 save.cols = matrix( c(6, 3, 4, 6, 3, 5), byrow=F, nrow=3 )
-
+excl.subs <- c("103", "204", "225", "226") # we don't have DTI data for these subs
 ## --------------------------------------------------------------------------
 # load behavioural data and relabel
 source("KG_behaviour-wrangles.R")
@@ -46,9 +46,11 @@ sprintf("For a Mahalanobis to be less that .1 per cent likely to have occured by
 ## --------------------------------------------------------------------------
 
 # form pre-data for NBS toolbox
+'%notin%' <- Negate('%in%')
 CV.4.save <- CV.dat %>% 
   pivot_wider(names_from = mult_cond, values_from = CV) %>%
-  drop_na() 
+  drop_na() %>%
+  filter(sub %notin% excl.subs)
 CV.4.save$int = 1
 
 # ---------------------------------------------------------------------------
