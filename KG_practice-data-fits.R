@@ -21,7 +21,7 @@ library(lme4)
 library(gridExtra)
 source("KG_data-wrangling.R")
 source("R_rainclouds.R")
-
+spath <- paste(getwd(), 'cleaned-data', sep='/')# path for saving data 
 # load raw data and tidy up by labelling factors
 # --------------------------------------------------------------------------------
 fpath  <-  paste(getwd(), 'raw-behav-data', sep='/')# path to data
@@ -202,5 +202,5 @@ pwr.params.VS <- all.fits.VS.dat %>% filter(model == "pwr") %>%
 
 # write to a csv file for later analysis
 # -----------------------------------------------------------------------------------
-write_csv(pwr.params.multi, paste(fpath, 'practiceGrp-pwr-coeffs.csv', sep='/'))    
-write_csv(pwr.params.VS, paste(fpath, 'controlGrp-pwr-coeffs.csv', sep='/'))  
+write_csv(pwr.params.multi, paste(spath, 'practiceGrp-pwr-coeffs.csv', sep='/'))    
+write_csv(pwr.params.VS, paste(spath, 'controlGrp-pwr-coeffs.csv', sep='/'))  
