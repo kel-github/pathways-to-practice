@@ -24,8 +24,8 @@ sd.crit = 3
 # 1st, compute the mean and var by condition
 head(dat.recoded)
 CV.dat <- dat.recoded %>% group_by(sub, sess, mult_cond) %>%
-                                   summarise(RTmu = mean(RT),
-                                   RTsd = sd(RT)) %>%
+                                   summarise(RTmu = mean(RT, na.rm=T),
+                                   RTsd = sd(RT, na.rm=T)) %>%
                           group_by(sub, sess, mult_cond) %>%
                                    transmute(CV=RTsd/RTmu) %>%
                           filter(sess == 'Pre') 
@@ -33,7 +33,8 @@ CV.dat <- dat.recoded %>% group_by(sub, sess, mult_cond) %>%
 p.chnge <- CV.dat %>% group_by(sub) %>%
            transmute(MT1=CV[mult_cond == "multi-first"]/CV[mult_cond=="single"],
                      MT2=CV[mult_cond == "multi-second"]/CV[mult_cond=="single"]) %>%
-           pivot_longer(c('MT1', 'MT2'), names_to = "condition", values_to="cvRatio")
+           pivot_longer(c('MT1', 'MT2'), names_to = "condition", values_to="cvRatio") %>%
+           unique()
 
 # get the diff in mu RT per participant
 RT.dat <- dat.recoded %>% group_by(sub, sess, mult_cond) %>%
@@ -88,7 +89,8 @@ CV.dat$group[as.numeric(as.character(CV.dat$sub))>=200] = 'control'
 CV.dat$group <- as.factor(CV.dat$group)
 CV.dat <- na.omit(CV.dat) %>% group_by(mult_cond) %>%
                               filter(CV < (mean(CV)+(sd.crit*sd(CV)))) %>%
-                              filter(CV > mean(CV)-(sd.crit*sd(CV))) 
+                              filter(CV > mean(CV)-(sd.crit*sd(CV)))
+
 
 p.chnge$group = NA
 p.chnge$group[as.numeric(as.character(p.chnge$sub))<200] = 'practice'
@@ -154,6 +156,7 @@ ggplot(reg.dat.RT, aes(x=cort_to_Put, y=muRatio)) +
 ggplot(reg.dat.RT, aes(x=cort_to_CN, y=muRatio)) +
   geom_point(aes(color=group)) + 
   facet_wrap(~condition)
+
 
 ## --------------------------------------------------------------------------
 # run models on pre-data

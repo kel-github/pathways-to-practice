@@ -8,8 +8,8 @@ library(tidyverse)
 library(wesanderson)
 source("KG_data-wrangling.R")
 dat.save.loc = 'cleaned-data'
-save.names = c('SkRT-regressors-sFM', 'SkRT-regressors-sSM')
-save.cols = matrix( c(6, 3, 4, 6, 3, 5), byrow=F, nrow=3 )
+save.names = c('SkRT-regressors-sFS')
+save.cols = matrix( c(6, 3, 4, 5), byrow=F, nrow=4 )
 excl.subs <- c("103", "133", "204", "225", "226", "232") # we don't have DTI data for these subs (or pre-data, see KG_prepCV-NBST)
 # save coordinates of the atlas used
 #co.ords = aal116 %>% select(c("x.mni", "y.mni", "z.mni"))
