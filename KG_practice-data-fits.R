@@ -18,6 +18,7 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working direct
 library(tidyverse)
 library(zoo)
 library(lme4)
+library(gridExtra)
 source("KG_data-wrangling.R")
 source("R_rainclouds.R")
 
@@ -91,7 +92,6 @@ clean.multi.data <- rbind(clean.multi.data %>% filter(mult_cond=="single") %>%
                     clean.multi.data %>% filter(mult_cond!="single"))
    
 
-
 # for each task, poarticipant, block and condition, perform visual data checks of 
 # data using boxplots and qqplots. 
 # Are there any outliers? Any large deviations from a
@@ -136,94 +136,71 @@ roll.mu.vis.search %>% ggplot(aes(x=cond_trial, y=move_mu, group=cond, color=con
                   geom_line() + facet_wrap(~sub)
 
 # -----------------------------------------------------------------------------------
+# MODELS AT THE SINGLE SUBJECT LEVEL
 # Fitting exponential/power functions and comparing between the two
 
 # wrt the construction of the pwr model:
-# we are seeking to predict the effect of practice trials on response time. We construct a model that allows the 
-# function that describes the effect of going from the single to the multitask conditions as a random effect that
-# varies from participant to participant. We assume a fixed effect for the single task trial (with an intercept that 
-# varies across subjects), and we ask what the co-efficient is that allows us to predict, for each subject, their RT
-# in the multitask conditions (first multitask trial)/second multitask trial.
+# we are seeking to predict the effect of practice trials on response time. For each participant we fit both
+# power and exponential models that allow the slope to change per condition.
 
 # The power model we want to fit looks like this:
-# y = constant * subject constant * trial^(the fixed effect + the effect of being that subject in that multitask condition)
-# which we can simplify to:
-# y = constant * subject constant * trial^fixed effect * trial^subject condition effect
+# y = constant * trial^(cond-coefficient)
 # to linearise (i.e. so lm can fit the data), we can take the log of both sides, which in its most simple form, will look like the following (also applying
 # the rule that multiplication = summation in log space), and the property that log(x^a) = a.log(x)
-# log(y) = log(constant) + log(subject constant) + fixed effect.log(trial) + sub-cond-effect.(log(trial))
+# log(y) = log(constant) + cond-coefficient.(log(trial))
 # to convert this back into linear space, we do the following:
 # 1) exponentiate both sides of the equation:
-# e^log(y) = e^(log(constant) + log(subject constant) + fixed effect.log(trial) + sub-cond-effect.(log(trial)))
+# e^log(y) = e^(log(constant) + cond-coefficient.(log(trial)))
 # 2) exponential and logarithm are inverses so we can immediately simplift the left hand side of the equation
-# y = e^(log(constant) + log(subject constant) + fixed effect.log(trial) + sub-cond-effect.(log(trial)))
+# y = e^(log(constant) + cond-coefficient.(log(trial)))
 # 3) we can use property of the exponents to split up the coefficient on e
-# y = e^(log(constant)) . e^(log(subject constant)) . e^(fixed effect.log(trial)) . e^(sub-cond-effect.(log(trial))))
+# y = e^(log(constant)) . e^(cond-coefficient.log(trial)) 
 # 4) use a property of the logaritms to move the fixed and subject effects:
-# y = e^(log(constant)) . e^(log(subject constant)) . e^log(trial)^fixedeffect . e^log(trial)^sub_cond_effect
+# y = e^(log(constant)) . e^log(trial)^cond-coefficient
 # 5) simplify the first two terms, and then use the fact that the log and the exp are inverses
-# y = N . N . trial^fixedeffect . trial^sub.cond.effect
+# y = N . trial^cond-coefficient 
 
 # wrt to the construction of the exponential model:
 # full model
-# y = constant * subject constant * (the fixed effect + the effect of being that subject in that multitask condition)^trial
+# y = constant * cond-coefficient^trial
 # note: now trial is the exponent
-# which we can also write as:
-# y = constant * subject constant * (the fixed effect)^trial * (the effect of being that subject in that multitask condition)^trial
 # and we can prepare for the linear fit as:
-# log(y) = constant * subject constant * (the fixed effect of trial) * (the effect of being that subject in that multitask condition by trial)
+# log(y) = constant + (the fixed effect of trial) 
 # thus the output parameters do not require any conversion back to linear space, as they are predicting a converted dv (y)
 
 # source: http://msenux2.redwoods.edu/MathDept/R/TransformingData.php
-roll.mu.multi <-  roll.mu.multi %>% na.omit()
-roll.mu.multi$cond_trial_rsc = roll.mu.multi$cond_trial/100 # rescaling cond_trial -> https://rpubs.com/jimsavage/scale_issues
-exp.model.MT <- lmer(log(move_mu) ~ cond_trial_rsc + (1+cond_trial_rsc:mult_cond|sub), data=roll.mu.multi, REML=FALSE)
-pwr.model.MT <- lmer(log(move_mu) ~ log(cond_trial_rsc) + (1:log(cond_trial_rsc):mult_cond|sub), data=roll.mu.multi, REML=FALSE)
-anova(exp.model.MT,pwr.model.MT)
-summary(exp.model.MT)
-
-
-## plotting data from a couple of randomly selected subjects, along with the model fits
-sim.result.and.plot <- function(sub.num, model, data){
-  # given the subject number, a lmer mixed model object, and the dataframe on which 
-  # the model was applied, predict a new set of results and plot against the participant's
-  # own data
-  nu.data = data %>% select(sub, cond_trial_rsc, mult_cond, move_mu) %>% filter(sub == sub.num)
-  nu.data$fitted = predict(model, newdata=nu.data)
-  nu.data$fitted = exp(nu.data$fitted)
-  nu.data %>% ggplot(aes(x=cond_trial_rsc, y=fitted, group=cond, color=cond)) +
-                     geom_point() + geom_line(aes(x=cond_trial_rsc, y=fitted, group=cond, color=cond))
-  # step 1 sanity check = do the predictions by hand, given the coefficients in the model 
-  nu.data$hand.fitted = NA
-  x = unique(nu.data$cond_trial_rsc)
-  nu.data$hand.fitted[nu.data$mult_cond == "single" & nu.] = exp( -0.1324032) * exp(-0.31501126) * exp(-0.0259306049*log(x))
-}
-
-
-roll.mu.vis.search <-  roll.mu.vis.search %>% na.omit()
-roll.mu.vis.search$cond_trial_rsc = roll.mu.vis.search$cond_trial/100 
-exp.model.VS <- lmer(log(move_mu) ~ cond_trial_rsc + (1+cond_trial_rsc:cond|sub), data=roll.mu.vis.search, REML=FALSE)
-pwr.model.VS <- lmer(log(move_mu) ~ log(cond_trial_rsc) + (1+log(cond_trial_rsc):cond|sub), data=roll.mu.vis.search, REML=FALSE)
-anova(exp.model.VS,pwr.model.VS)
-
 # -----------------------------------------------------------------------------------
-# plot residuals
-plot(exp.model.MT)
-plot(pwr.model.VS)
-# http://docs.statwing.com/interpreting-residual-plots-to-improve-your-regression/
-# residuals are basically ok
+all.fits.multi.dat <- lapply(unique(roll.mu.multi$sub), fit.mod.sub.level.multidat, data=roll.mu.multi)
+all.fits.VS.dat <- lapply(unique(roll.mu.vis.search$sub), fit.mod.sub.level.VS, data=roll.mu.vis.search)
+all.fits.multi.dat <- do.call(rbind, all.fits.multi.dat)
+all.fits.VS.dat <- do.call(rbind, all.fits.VS.dat)
 
+# plot some fits at random for both groups
 # -----------------------------------------------------------------------------------
-# power model is better under both circumstances
-# http://msenux2.redwoods.edu/MathDept/R/TransformingData.php
+plot.multi.fit(roll.mu.multi, all.fits.multi.dat, "145")
+plot.VS.fit(roll.mu.vis.search, all.fits.VS.dat, "215")
 
-
+# for each function and task, compute lowest RMSE
 # -----------------------------------------------------------------------------------
-# comments on the first derivative
+multi.comp <- all.fits.multi.dat %>% group_by(model) %>% summarise(s=sum(RMSE))
+VS.comp <- all.fits.VS.dat %>% group_by(model) %>% summarise(s=sum(RMSE))
+# in both cases the power function has a lower RMSE 
 
-
+# making a dataframe of the parameters, while also calculating the first derivative values
 # -----------------------------------------------------------------------------------
-# for each model, extract the exponent parameters 
-# because its a power function, the first derivative is just the same as the function
-prac.coefs <- rbind(get.coef.exps(pwr.model.MT), get.coef.exps(pwr.model.VS))
-write_csv(prac.coefs, paste(fpath, 'practice-pwr-coeffs.csv', sep='/'))    
+pwr.params.multi <- all.fits.multi.dat %>% filter(model == "pwr") %>%
+                          mutate(a = int, # for y = a x^b
+                                 b = slp,
+                                 deriv_a = int*slp,
+                                 deriv_b = slp-1)
+
+pwr.params.VS <- all.fits.VS.dat %>% filter(model == "pwr") %>%
+                          mutate(a = int, # for y = a x^b
+                                 b = slp,
+                                 deriv_a = int*slp,
+                                 deriv_b = slp-1)
+
+# write to a csv file for later analysis
+# -----------------------------------------------------------------------------------
+write_csv(pwr.params.multi, paste(fpath, 'practiceGrp-pwr-coeffs.csv', sep='/'))    
+write_csv(pwr.params.VS, paste(fpath, 'controlGrp-pwr-coeffs.csv', sep='/'))  
