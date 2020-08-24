@@ -11,8 +11,8 @@ library(brainGraph)
 source("R_rainclouds.R")
 source("KG_data-wrangling.R")
 dat.save.loc = 'cleaned-data'
-save.names = c('SkCV-regressors-s', 'SkCV-regressors-FM', 'SkCV-regressors-SM')
-save.cols = matrix( c(6, 3, 6, 4, 6, 5), byrow=F, nrow=2 )
+save.names = c('SkCV-regressors-sFS')
+save.cols = matrix( c(6, 3, 4, 5), byrow=F, nrow=4 )
 excl.subs <- c("103", "133", "204", "225", "226", "232") # we don't have DTI data for these subs (or pre-data, see below)
 # save coordinates of the atlas used
 #co.ords = aal116 %>% select(c("x.mni", "y.mni", "z.mni"))
@@ -33,7 +33,7 @@ CV.dat <- dat.recoded %>% group_by(sub, sess, mult_cond) %>%
   group_by(sub, sess, mult_cond) %>%
   transmute(CV=((q75-q25)/q50)*100) %>%
   filter(sess == 'Pre') 
-
+write_csv(CV.dat, path=paste(dat.save.loc, '/', 'CV-all-subs', '.csv', sep=''))
 
 ## --------------------------------------------------------------------------
 # Put into wideform and check Mahalanobis distance
