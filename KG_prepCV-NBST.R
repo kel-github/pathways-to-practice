@@ -31,10 +31,10 @@ CV.dat <- dat.recoded %>% group_by(sub, sess, mult_cond) %>%
             q50 = quantile(RT, 0.5),
             q75 = quantile(RT, 0.75)) %>%
   group_by(sub, sess, mult_cond) %>%
-  transmute(CV=((q75-q25)/q50)*100) %>%
-  filter(sess == 'Pre') 
+  transmute(CV=((q75-q25)/q50)*100,
+            RT=q50)  
 write_csv(CV.dat, path=paste(dat.save.loc, '/', 'CV-all-subs', '.csv', sep=''))
-
+CV.dat <- CV.dat %>% filter(sess == "Pre")
 ## --------------------------------------------------------------------------
 # Put into wideform and check Mahalanobis distance
 # for subs 133 and 232 we only have pre single trial data (this could be due to a recoding issue)
