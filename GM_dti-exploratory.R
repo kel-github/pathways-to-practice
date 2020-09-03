@@ -6,12 +6,14 @@
 rm(list=ls())
 
 # set working directory to current location
-install.packages("rstudioapi")  
+# install.packages("rstudioapi")  # you don't need to run this line again once you have installed it the first time
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+
+
 
 # load packages and source data-wrangling functions
 # --------------------------------------------------------------------------------
-install.packages("tidyverse") 
+# install.packages("tidyverse") - again, not needed now
 library(tidyverse)
 source("KG_data-wrangling.R")
 source("R_rainclouds.R")
@@ -20,7 +22,7 @@ source("R_rainclouds.R")
 # --------------------------------------------------------------------------------
 
 fpath <- 'C:/Git/pathways-to-practice/dti-data/' 
-
+fpath <- 'dti-data/' # to make work on Kel's setup, comment out when using yourself
 tracts <- list(c("Superior_Frontal_gyrus_dorsolateral_Left", "Caudate_nucleus_Left"), 
                c("Superior_Frontal_gyrus_dorsolateral_Left", "Caudate_nucleus_Right"),
                c("Superior_Frontal_gyrus_dorsolateral_Right", "Caudate_nucleus_Right"),
@@ -53,7 +55,9 @@ levels(sub.data$group) <- c("practice", "control")
 sub.data$sub <- as.factor(sub.data$sub)
 
 sub.data$session <- as.factor(sub.data$session)
-levels(sub.data$session) <- c("pre-trial", "post-trial")
+levels(sub.data$session) <- c("pre-trial", "post-trial") # there is a thread about this on the slack - a trial is a single
+# instance of an observation in an experiment. To say something is 'pre-trial' suggests that it is taken from the time just
+# preceeding a trial - (i.e. the intertrial interval). Can you give the levels of this factor a more appropriate name?
 
 sub.data$tract_names <- c("lDLPFC_lCN", "lDLPFC_rCN", "rDLPFC_rCN", "rDLPFC_lCN",
                           "lDLPFC_lLNP", "lDLPFC_rLNP", "rDLPFC_rLNP", "rDLPFC_lLNP",
@@ -67,7 +71,7 @@ sub.data$tract_names <- as.factor(sub.data$tract_names)
 # this will help you as a start https://rstudio-education.github.io/tidyverse-cookbook/transform-tables.html
 
 summary(sub.data)
-# Put the above data into one line of code
+# Put the above data into one line of code -- KG: what do you mean by this?
 
 summary <- sub.data %>% group_by(group, session) %>%
   summarise(N=length(unique(sub)))
@@ -80,19 +84,28 @@ summary <- sub.data %>% group_by(group, session) %>%
 # 3	control	pre-trial	45
 # 4	control	post-trial	46
 
-length(unique(sub.data)) == nrow(sub.data)
+length(unique(sub.data)) == nrow(sub.data) # KG: length gives you the columns of sub.data, not the rows. As unique(sub.data) gives
+# a dataframe that contains all the unique rows of sub.data, a safer, less bug prone way to do this would be:
+nrow(unique(sub.data)) == nrow(sub.data)
 #[1] FALSE
 
 #The FALSE result tells me that there are some duplicates
 
-sum(duplicated(sub.data))
+sum(duplicated(sub.data)) # KG: nice, I didn't know about this function :)
 #[1] 140
+# KG: you could also put the total rows of sub.data here, so that you have all the information you need 
+# to check that the line of code below works properly
 
-sub.data <- sub.data %>% distinct(sub, tract_names, .keep_all = TRUE)
+# sub.data <- sub.data %>% distinct(sub, tract_names, .keep_all = TRUE) # KG: this should have been covered in the code Lizzy shared with
+# you, we learned its better to use unique rather than distinct
+sub.data <- sub.data %>% unique()
 
 # get s1 data
-s1.data <- sub.data %>% filter(session == 0)
-s1.data$sub <- as.factor(s1.data$sub)
+s1.data <- sub.data %>% filter(session == 0) # KG: you named the levels of session above as 'pre-trial' and 'post-trial' so this line won't work
+s1.data <- sub.data %>% filter(session == 'pre-trial')
+
+s1.data$sub <- as.factor(s1.data$sub) # KG: you defined this as a factor already when you made the sub.data frame, no need to do it again
+
 # because we lost some session 1 DTI data in the great back up miss of 2014, I am going to work out who does not have session 1 data, and I'll add their session 2 data to this dataframe
 missed.subs <- unique(sub.data$sub)[!(unique(sub.data$sub) %in% unique(s1.data$sub))]
 s1.data <- rbind(s1.data, sub.data[sub.data$sub %in% missed.subs, ])
@@ -106,7 +119,7 @@ summary <- sub.data %>% group_by(group) %>%
 # 2	control	47
 
 sub.data %>%
-  select(everything()) %>%
+  select(everything()) %>% # KG: why are you selecting everything? seems like a redundant line of code to me, also why are you looking at sub.data when you made the dataframe s1.data?
   summarise_all(funs(sum(is.na(.))))
 # This line of code aimed to count the number of NAs across
 # multiple columns - apparently there are no missing values

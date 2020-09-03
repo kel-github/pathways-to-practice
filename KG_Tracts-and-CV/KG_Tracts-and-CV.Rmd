@@ -1,0 +1,387 @@
+---
+title: "On the relationship between variability in multitasking performance and cortical projections to the caudate and the putamen"
+author: "[Kelly Garner](https://github.com/kel-github)"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+mail: "getkellygarner@gmail.com"
+github: "kel-github"
+output:
+  epuRate::epurate:
+    toc: TRUE
+    number_sections: FALSE
+    code_folding: "hide"
+---
+
+
+<br><br>
+
+## Relating variability in multitasking behaviour to cortical projections to the caudate and the putamen
+
+> Having previously identified latent circuits entailing a set of cortical nodes (IFG, SFG, SMA, IPG) and their white matter projections to the caudate and the putamen respectively [see here](https://github.com/kel-github/pathways-to-practice/tree/master/KG-EFA-tutorial-tmplt), I will now examine how individual scores on the factors reflecting these circuits predict variability in performance on a multitasking paradigm. Details of the data collection can be found [here](https://www-pnas-org/content/112/46/14372).
+
+
+# Data details
+***
+
+For each subject, session and multi-task condition (single [s], multi-task first response [FM], multi-task second response [SM]), I calculated the co-efficient of variability [CV] as:
+
+  $CV = \frac{Q75-Q25}{Q50}$
+
+where Q = quantile. 
+
+I am also taking each participants' scores for the two factor solution identified [here](https://github.com/kel-github/pathways-to-practice/tree/master/KG-EFA-tutorial-tmplt) 
+
+```{r, message=FALSE, warning=FALSE}
+# Load packages, source function files and define path variables
+library(tidyverse)
+library(cowplot)
+library(interactions)
+library(wesanderson)
+source("../R_rainclouds.R")
+source("../KG_data-wrangling.R")
+tract_data = '../dti-data/KG_2factSol_subdata.csv'
+fpath <- paste(getwd(), 'cleaned-data', sep='/')# path for attaining behavioural [CV] data 
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+# get the behavioural data
+CV.dat <- read.csv("../cleaned-data/CV-all-subs.csv")
+CV.dat$group <- NA
+CV.dat$group[CV.dat$sub < 200] = "practice"
+CV.dat$group[CV.dat$sub > 199] = "control"
+CV.dat$group <- factor(CV.dat$group, levels=c("practice", "control"))
+CV.dat$cog_cond <- c("s", "FM", "SM")
+CV.dat$cog_cond <- factor(CV.dat$cog_cond, levels=c("s", "FM", "SM"))
+CV.dat <- CV.dat %>% select(-mult_cond)
+CV.dat$sub <- as.factor(CV.dat$sub)
+CV.dat$sess <- factor(CV.dat$sess, levels=c("Pre", "Post"))
+
+learn.dat <- rbind( read.csv( "../cleaned-data/practiceGrp-pwr-coeffs.csv"),
+                    read.csv( "../cleaned-data/controlGrp-pwr-coeffs.csv")) %>%
+                    select(-c(model, RMSE, int, slp))
+learn.dat$cog_cond <- c("s", "FM", "SM")
+learn.dat$cog_cond <- factor(learn.dat$cog_cond, levels=c("s", "FM", "SM"))
+learn.dat <- learn.dat %>% select(-cond)
+learn.dat$sub <- as.factor(learn.dat$sub)
+
+all.dat <- inner_join(CV.dat, learn.dat, by=c("sub", "cog_cond"))
+all.dat$sub <- as.factor(all.dat$sub)
+
+# get the tract data
+tract.dat <- read.csv(tract_data) %>% select(-X) 
+tract.dat$sub <- as.factor(tract.dat$sub)
+reg.dat <- inner_join(all.dat, tract.dat, by=c('sub')) %>%
+              unique() %>% na.omit
+reg.dat$sub <- as.factor(reg.dat$sub)
+
+# Show it:
+reg.dat %>% head(5)
+```
+
+
+<br><br>
+
+# Data Check
+***
+
+First I just check that the variables of interest (regressors, CV data and median RT) are not horribly skewed.
+
+
+
+```{r, fig.align="center", fig.width=6, fig.height=4, fig.cap="Showing QQ Plot for CV by condition and by session"}
+draw.qq <- function(x){
+    ggplot(reg.dat, aes(sample=eval(parse(text = x)), colour=cog_cond)) +
+          stat_qq() + stat_qq_line() + scale_color_manual(values=wes_palette("IsleofDogs1")[c(1,2,4)]) +
+          facet_wrap(~sess*cog_cond) + ggtitle(x)
+  }
+
+draw.qq("CV")
+
+```
+
+<br>
+
+```{r, fig.align="center", fig.width=6, fig.height=4, fig.cap="Showing QQ Plot for RT by condition and by session"}
+
+draw.qq("RT")
+
+```
+
+<br>
+
+```{r, fig.align="center", fig.width=6, fig.height=4, fig.cap="Showing QQ Plot for scores on the cortical to caudate factor"}
+
+draw.qq("cort_to_CN")
+
+```
+
+<br>
+
+```{r, fig.align="center", fig.width=6, fig.height=4, fig.cap="Showing QQ Plot for scores on the cortical to caudate factor"}
+
+draw.qq("cort_to_Put")
+
+```
+
+<br><br>
+
+# Examining the relationship between CV and factor scores
+***
+
+We seek to understand whether our scores on the tract factors (cortical to caudate [cort_to_CN] and cortical to putamen [cort_to_Put]) predict an individuals variability in performance on single task trials, on the first performed task of multitask trials, and on the second performed task of multitask trials. We take each of these DVs in turn, and fit a GLM, with the two factor score regressors, as well as group and session factors, while controlling for the relationship between median RT and CV.
+
+```{r}
+
+# first fit the models
+CV.mds <- lapply(unique(reg.dat$cog_cond), function(x) glm(CV ~ cort_to_CN*cort_to_Put*group*sess+RT, data=reg.dat[reg.dat$cog_cond == x,]))
+
+```
+
+<br>
+
+## Single task CV
+
+<br>
+
+For single task CV, we only find a statistically significant relationship between median RT and CV.
+
+<br>
+
+```{r}
+
+summary(CV.mds[[1]])
+```
+
+<br><br>
+
+## First multi-task performed
+
+<br>
+
+For the first multi-task performed [FM], we find a significant cort_to_CN x group x session interaction.
+
+```{r}
+
+summary(CV.mds[[2]])
+```
+
+<br>
+
+To further understand this interaction, we first plot the cort_to_CN x session interaction by group.
+
+```{r, fig.align="center", fig.width=6, fig.height=4, fig.cap="cort_to_CN x session interaction by group"}
+
+interact_plot(CV.mds[[2]], pred=cort_to_CN, modx=sess, mod2=group, plot.points=TRUE, interval=TRUE,
+              colors = wes_palette("IsleofDogs1")[c(1,4)])
+
+
+```
+
+<br>
+
+We can see from the figure above (and corroborate with post hoc tests) that the relationship between cort_to_CN and CV is statistically significant for the practice group at the pre-training session, but not at post-training. For pre-training, as FA in this circuit increases, variability in performance decreases. For the control group, this relationship is not significant. Therefore, the results appear to be due to a difference in the groups that occurred at the pre-training session.
+
+
+<br><br>
+
+# Investigating strategy differences between practice and control groups at the pre-training session
+***
+
+<br>
+
+We know from previous research that the multitask trials can be completed using at least two strategies. 1) a serial processing strategy where task 1 is completed first, and task 2 is engaged subsequently. In this case you would expect the duration difference between s and FM trials to be small, whereas the difference between FM and SM should be larger (as the cost has been loaded onto SM performance). In contrast, the decision-stages of both FM and SM can be completed prior to execution of both responses (response grouping). In this instance, you would expect the difference between s and FM to be large, and the difference between FM and SM to be small.
+
+<br>
+
+It could be that the observed pre-training difference in the relationship between cort_to_CN and CV is moderated by the strategy participants used in the pre-training session.
+
+<br>
+
+To test this, I first sought to quantify strategy differences between the groups. For each participant, I calculated $FM - s$ and $SM - FM$. If there is group level differences in the strategy utilised, we should see a difference in these measures.
+
+<br>
+
+```{r, out.width=c('50%', '50%'), fig.show='hold', fig.cap="Showing FM-s and SM-FM for the practice and control groups"}
+
+RT.diff.dat <- reg.dat %>% group_by(sub, group, sess) %>%
+                           summarise(s2FM = RT[cog_cond == "FM"]-RT[cog_cond == "s"],
+                                     FM2SM = RT[cog_cond == "SM"]-RT[cog_cond == "FM"])
+
+RT.diff.dat %>% ggplot(aes(x=group, y=s2FM, fill=group)) +
+                           geom_boxplot(outlier.colour="black", notch=TRUE) + facet_wrap(~sess) +
+                           ylab("FM - s") + 
+                           scale_fill_manual(values=wes_palette("IsleofDogs1")[c(1,4)]) 
+RT.diff.dat %>% ggplot(aes(x=group, y=FM2SM, fill=group)) +
+                           geom_boxplot(outlier.colour="black", notch=TRUE) + facet_wrap(~sess) +
+                           ylab("SM - FM") + 
+                           scale_fill_manual(values=wes_palette("IsleofDogs1")[c(1,4)]) 
+```
+
+<br>
+
+As can be seen, the groups are different in the strategy that they used pre-training, according to these metrics.
+We can test this difference to see if it is statistically significant (we can see it is from the notch plot, but to be formal we compare the groups at the pre-session using Welch's t-tests, which you can see are both statistically significant...)
+
+<br>
+
+```{r}
+
+with(RT.diff.dat[RT.diff.dat$sess == "Pre", ], t.test(s2FM~group, paired=FALSE, var.equal = FALSE))
+with(RT.diff.dat[RT.diff.dat$sess == "Pre", ], t.test(FM2SM~group, paired=FALSE, var.equal = FALSE))
+
+```
+
+<br>
+
+The above data indeed suggest that the two groups differed in their task strategy at the first session. Now we can test whether this strategy is what moderates the observed pre-training differences, by adding these variables ($FM-s$ and $SM-FM$) as regressors to the glms that were previously applied to each group.
+
+<br><br>
+
+# Does the duration between s and FM moderate the relationship between cort_to_CN and CV, observed for the practice group and not the control group?
+***
+
+To investigate this question we apply a cort_to_CN x s2FM x sess GLM to the practice group data, to see if s2FM interacts with cort_to_CN, to predict CV.
+
+<br>
+
+```{r}
+reg.dat <- inner_join(reg.dat, RT.diff.dat, by=c("sub", "sess", "group"))
+
+```
+```{r}
+
+# running SM now also, for recall later
+s2FM.mod.p <- lapply(c("FM","SM"), function(x) glm(CV ~ cort_to_CN:s2FM:sess, data=reg.dat[reg.dat$group == "practice" & reg.dat$cog_cond == x,]))
+summary(s2FM.mod.p[[1]])
+
+```
+
+<br>
+
+We can now plot this interaction to see if $FM - s$ does indeed moderate the relationship in the way we would expect. Specifically, we would expect participants who show a larger value for s2FM to show a stronger negative relationship between cort_to_CN and CV. This means that the higher the FA in the caudate based network, the lower the variability in your performance, when you are using a response-grouping strategy (i.e. when you are holding in mind your response to FM for a longer period of time).
+
+```{r, fig.align="center", fig.width=6, fig.height=4, fig.cap="cort_to_CN x session interaction for the practice group, by s2FM value (mu-1SD, mu, mu+1SD)"}
+
+interact_plot(s2FM.mod.p[[1]], pred=cort_to_CN, modx=sess, mod2=s2FM, plot.points=TRUE, interval=TRUE,
+              colors = wes_palette("IsleofDogs1")[c(1,4)])
+
+
+```
+
+Given the controls did not show a statistically significant cort_to_CN x session interaction, we would not expect the $FM - s$ variable to influence this non-significant relationship, which is what we see below.
+
+```{r}
+
+s2FM.mod.c <- lapply(c("FM","SM"), function(x) glm(CV ~ cort_to_CN:s2FM:sess, data=reg.dat[reg.dat$group == "control" & reg.dat$cog_cond == x,]))
+summary(s2FM.mod.c[[1]])
+
+```
+
+<br>
+
+Although it was not statistically significant, we do visually observe the same trend, suggesting that this relationship is not unique to the practice group.
+
+```{r, fig.align="center", fig.width=6, fig.height=4, fig.cap="cort_to_CN x session interaction for the control group, by s2FM value (mu-1SD, mu, mu+1SD)"}
+
+interact_plot(s2FM.mod.c[[1]], pred=cort_to_CN, modx=sess, mod2=s2FM, plot.points=TRUE, interval=TRUE,
+              colors = wes_palette("IsleofDogs1")[c(1,4)])
+
+
+```
+
+The same test with the $SM - FM$ variable did not yield a statistically significant interaction for either group.
+
+<br>
+
+```{r}
+
+FM2SM.mod.p <- lapply(c("FM","SM"), function(x) glm(CV ~ cort_to_CN:FM2SM:sess, data=reg.dat[reg.dat$group == "practice" & reg.dat$cog_cond == x,]))
+summary(FM2SM.mod.p[[1]])
+
+```
+
+```{r}
+
+FM2SM.mod.c <- lapply(c("FM","SM"), function(x) glm(CV ~ cort_to_CN:FM2SM:sess, data=reg.dat[reg.dat$group == "control" & reg.dat$cog_cond == x,]))
+summary(FM2SM.mod.c[[1]])
+
+```
+
+<br><br>
+
+# Do the same associations apply for the multitask that was performed second [SM]?
+***
+
+<br>
+
+
+We can now ask if we observe the same relationships for the second task performed on the multitask trials. First we run the same GLM, with the two factor score regressors, as well as group and session factors, while controlling for the relationship between median RT and CV, this time with SM as the DV.
+
+Again, we see a signifiant cort_to_CN x group x session interaction.
+
+```{r}
+summary(CV.mds[[3]])
+```
+
+<br>
+
+A plot of the interaction reveals a comparable relationship as to what was observed for FM:
+
+<br>
+
+```{r, fig.align="center", fig.width=6, fig.height=4, fig.cap="cort_to_CN x session interaction for the practice and control groups"}
+
+interact_plot(CV.mds[[3]], pred=cort_to_CN, modx=sess, mod2=group, plot.points=TRUE, interval=TRUE,
+              colors = wes_palette("IsleofDogs1")[c(1,4)])
+
+```
+
+<br>
+
+We run the same GLMs as above, containing s2FM as a regressor, to determine whether strategy moderates this interaction. This time the interaction is not statistically significant (p=.0577), but the plot of the interaction does follow the same visual pattern.
+
+<br>
+
+```{r}
+
+summary(s2FM.mod.p[[2]])
+
+```
+
+```{r, fig.align="center", fig.width=6, fig.height=4, fig.cap="SM ~ cort_to_CN x session interaction for the practice group, by s2FM value (mu-1SD, mu, mu+1SD)"}
+
+interact_plot(s2FM.mod.p[[2]], pred=cort_to_CN, modx=sess, mod2=s2FM, plot.points=TRUE, interval=TRUE,
+              colors = wes_palette("IsleofDogs1")[c(1,4)])
+
+
+```
+
+<br>
+
+We also find similar observations for the control group.
+
+<br>
+
+```{r}
+
+summary(s2FM.mod.c[[2]])
+
+```
+
+```{r, fig.align="center", fig.width=6, fig.height=4, fig.cap="SM~cort_to_CN x session interaction for the control group, by s2FM value (mu-1SD, mu, mu+1SD)"}
+
+interact_plot(s2FM.mod.c[[2]], pred=cort_to_CN, modx=sess, mod2=s2FM, plot.points=TRUE, interval=TRUE,
+              colors = wes_palette("IsleofDogs1")[c(1,4)])
+
+
+```
+
+<br><br>
+
+# Conclusion
+***
+
+Performance is more variable, particularly on multitask trials, with lower FA levels in the caudate-cortical network, however, this relationship is moderated by the extent to which a response grouping strategy is applied (relative to a serial strategy).
+
+
+<br><br>

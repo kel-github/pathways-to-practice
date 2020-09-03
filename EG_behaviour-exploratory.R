@@ -82,13 +82,6 @@ clean.data <- RecodeMultiData(clean.data)
 
 
 
-# reliability analysis - correlate our resulting measures between session 1 & 2, 
-# for the control group only
-# ----------------------------------------------------------------------------------
-
-
-
-
 
 # create a raincloud plot of our final measure (from the session 1 data, by condition)
 # ----------------------------------------------------------------------------------

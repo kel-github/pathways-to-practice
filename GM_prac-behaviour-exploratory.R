@@ -26,8 +26,12 @@ raw.vis.search.data <- GetPracticeDataVisSearch(fpath)
 
 # Multitask data factors:
 raw.multi.data$cond_block <- as.factor(raw.multi.data$cond_block)
+
 raw.multi.data$cond <- as.factor(raw.multi.data$cond)
 # levels(raw.multi.data$cond) <- c("shape single", "sound single", "multitask")
+raw.multi.data$cond_trial <- as.factor(raw.multi.data$cond_trial)
+raw.multi.data$cond <- as.factor(raw.multi.data$cond) # KG: would be good to label these meaningfully - 1= shape single, 2 = sound single, 3 = multitask
+
 raw.multi.data$sub <- as.factor(raw.multi.data$sub)
 
 # Visual search data factors:
@@ -67,6 +71,7 @@ vis.group.accuracy <- vis.accuracy %>%
 
 # Minimum accuracy criteria of 70% accuracy as per Garner, Lynch & Dux (2016)
 
+
 # Visual search outliers:
 min.vis.acc.criteria <- vis.accuracy %>% group_by(sub, cond, cond_block) %>%
   filter(accu < .7)
@@ -100,6 +105,13 @@ min.multi.acc.criteria <- multi.accuracy %>% group_by(sub, cond, cond_block) %>%
 # 144   multitask     3             0.53571429
 
 
+##### KG: here is the point where you need to define which subjects you will
+# exclude based on the minimum accuracy criteria
+# There is an example of this kind of process in GM_s1data_code.R
+
+
+
+# -------------------------------------------------------------------------------
 # now clean the RT data (all correct responses and all data > 200 ms or < + 2.5 stdevs from the
 # mean for that participant in that condition, and that block), 
 # for the multitask data, recode the data so that trials are labelled
@@ -109,18 +121,24 @@ clean.multi.data <- GetPracticeMultiClean(raw.multi.data)
 clean.multi.data <- RecodePracticeMultiData(clean.multi.data)
 clean.vis.search.data <- GetPracticeVisSearchClean(raw.vis.search.data)
 
-# Collapse single trials over the task factor:
+
 clean.multi.data <- rbind(clean.multi.data %>% filter(mult_cond=="single") %>%
                             group_by(sub, cond_trial, cond_block) %>%
                             transmute(RT=mean(RT),
                                       mult_cond="single"),
                           clean.multi.data %>% filter(mult_cond!="single"))
 
-
 # now filter out participants who scored below the minimum accuracy criteria, using
 # the tidyverse filter function (see https://r4ds.had.co.nz/transform.html section 5.2)
 # label, recode and where necessary, reorder factors of the dataframe
 # --------------------------------------------------------------------------------
+# KG: you will need to use the dataframe of subject numbers that you would have 
+# defined above  
+
+# KG: the below code won't work because 'clean.multi.data' etc does not contain any
+# error trials, i.e. all the incorrect responses have been removed so that we can 
+# get condition averages for the correct trials only
+
 
 # Filter out participants 106 and 144 who do not meet minimum criteria:
 clean.multi.data <- filter(clean.multi.data, !(sub %in% unique(min.multi.acc.criteria$sub)))
@@ -171,10 +189,62 @@ ggplot(clean.vis.search.data, aes(sample = RT, colour = factor(cond))) +
   stat_qq_line() +
   facet_wrap(~ cond_block, nrow = NULL)
 
+=======
+# KG: apologies for including participant above. What you want to do is plot boxplots for 
+# block x condition, for the multitask, and the visual search task
+# for example:
+clean.multi.data %>% ggplot(aes(y=RT, group=cond)) +
+                     geom_boxplot(notch=TRUE) +
+                     facet_wrap(~cond_block)
+
+# Boxplots:
+# Sub X Multitask RT
+# ggplot(clean.multi.data, aes(RT, sub)) + 
+#   geom_boxplot(notch = TRUE)
+# # Task X Multitask RT
+# ggplot(clean.multi.data, aes(RT, task)) + 
+#   geom_boxplot(notch = TRUE)
+# # Block X Multitask RT
+# ggplot(clean.multi.data, aes(RT, cond_block)) + 
+#   geom_boxplot(notch = TRUE)
+# # Cond X Multitask RT
+# ggplot(clean.multi.data, aes(RT, mult_cond)) + 
+#   geom_boxplot(notch = TRUE)
+# # Sub X Visual RT
+# ggplot(clean.vis.search.data, aes(RT, sub)) + 
+#   geom_boxplot(notch = TRUE)
+# # Block X Visual RT
+# ggplot(clean.vis.search.data, aes(RT, cond_block)) + 
+#   geom_boxplot(notch = TRUE)
+# # Cond X VIsual RT
+# ggplot(clean.vis.search.data, aes(RT, cond)) + 
+#   geom_boxplot(notch = TRUE)
+# 
+# # QQ Plots:
+# # Task X Multitask QQ
+# ggplot(clean.multi.data, aes(sample = RT, colour = factor(task))) +
+#   stat_qq() +
+#   stat_qq_line() +
+#   facet_wrap(~ task, nrow = NULL)
+# # Cond X Multitask QQ
+# ggplot(clean.multi.data, aes(sample = RT, colour = factor(mult_cond))) +
+#   stat_qq() +
+#   stat_qq_line() +
+#   facet_wrap(~ mult_cond, nrow = NULL)
+# # Block X Visual QQ
+# ggplot(clean.vis.search.data, aes(sample = RT, colour = factor(cond_block))) +
+#   stat_qq() +
+#   stat_qq_line() +
+#   facet_wrap(~ cond_block, nrow = NULL)
+# # Cond X Visual QQ
+# ggplot(clean.vis.search.data, aes(sample = RT, colour = factor(cond))) +
+#   stat_qq() +
+#   stat_qq_line() +
+#   facet_wrap(~ cond, nrow = NULL)
+
 
 # exclude outliers
 # ----------------------------------------------------------------------------------
-
 # Losing too much data with this criteria, opting to delete this step from analysis:
 # outliers.multi <- clean.multi.data %>% group_by(cond) %>%
 #  filter(((RT - mean(RT))/sd(RT)) > 3)
@@ -192,6 +262,27 @@ ggplot(clean.vis.search.data, aes(sample = RT, colour = factor(cond))) +
 # Filters out any RT outliers + 3*sd
 # clean.vis.search.data <- clean.vis.search.data %>% filter(RT > (mean(RT) - (3*sd(RT))))
 # Filters out any RT outliers - 3*sd
+=======
+# KG: examining the plots and data, I think we are losing too much data with this
+# criteria. As we excluded outliers at the level of each participant above, lets leave
+# this step.
+
+# outliers.multi <- clean.multi.data %>% group_by(cond) %>%
+#   filter(((RT - mean(RT))/sd(RT)) > 3)
+# outliers.multi
+# 
+# outliers.vis <- clean.vis.search.data %>% group_by(cond) %>%
+#   filter(((RT - mean(RT))/sd(RT)) > 3)
+# outliers.vis
+# 
+# clean.multi.data <- clean.multi.data %>% filter(RT < (mean(RT) + (3*sd(RT))))
+# # Filters out any RT outliers + 3*sd
+# clean.multi.data <- clean.multi.data %>% filter(RT > (mean(RT) - (3*sd(RT))))
+# # Filters out any RT outliers - 3*sd
+# clean.vis.search.data <- clean.vis.search.data %>% filter(RT < (mean(RT) + (3*sd(RT))))
+# # Filters out any RT outliers + 3*sd
+# clean.vis.search.data <- clean.vis.search.data %>% filter(RT > (mean(RT) - (3*sd(RT))))
+# # Filters out any RT outliers - 3*sd
 
 # now we are going to compute a moving average across trials, for each participant
 # and condition, this is what we will plot and fit our functions to
@@ -199,13 +290,9 @@ ggplot(clean.vis.search.data, aes(sample = RT, colour = factor(cond))) +
 # we will average over each set of 12 trials (you can play with this value
 # and see what effect it has when you plot it below)
 # ----------------------------------------------------------------------------------
-width = 12
-roll.mu.multi <- rbind(     clean.multi.data %>% filter(mult_cond == "single") %>%
-                                                  group_by( sub, cond ) %>%
-                                                  mutate( move_mu = rollmean(RT, mean, k = width, fill = NA ) ),
-                             clean.multi.data %>% filter(mult_cond != "single") %>%
-                                                  group_by( sub, mult_cond ) %>%
-                                                  mutate( move_mu = rollmean(RT, mean, k=width, fill = NA)))
+width = 24
+roll.mu.multi <-  clean.multi.data %>% group_by( sub, mult_cond ) %>%
+                                       mutate( move_mu = rollmean(RT, mean, k = width, fill = NA ) )
                  
 
 roll.mu.vis.search <- clean.vis.search.data %>% group_by( sub, cond ) %>%
@@ -219,7 +306,11 @@ roll.mu.vis.search <- clean.vis.search.data %>% group_by( sub, cond ) %>%
 # e.g. https://ggplot2.tidyverse.org/reference/geom_ribbon.html
 # ----------------------------------------------------------------------------------
 
+# KG: how about something like:
+subs <-  sample(clean.multi.data$sub, 10)
+plot.dat <- roll.mu.multi %>% filter(sub %in% subs)
 # Multitask Graph:
+
 # Subsetting 10 random participants from the data
 plot.dat.multi <- roll.mu.multi %>% filter(sub %in% c(107, 135, 127, 128, 103, 108, 113, 117, 142, 137))
 
@@ -242,11 +333,12 @@ plot.dat.multi.5 <- roll.mu.multi %>% filter(sub %in% c(107, 135, 127, 128, 103)
 
 # Graphing moving averages for 5 participants with trials on x axis and moving average RT on y axis
 ggplot(data=plot.dat.multi.5, aes(x=cond_trial, y=move_mu, group=mult_cond, color=mult_cond)) +
+=======
+ggplot(data=plot.dat, aes(x=cond_trial, y=move_mu, group=mult_cond, color=mult_cond)) +
   geom_line() + geom_point()+
   scale_color_brewer(palette="Paired")+
   theme_minimal()+
-  facet_wrap(~ sub, nrow = NULL)
-
+  facet_wrap(~ sub)
 
 # Visual Search Graph:
 # Subsetting 10 random participants from the data

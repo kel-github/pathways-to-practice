@@ -2,10 +2,10 @@
 # This code contains the functions required to wrangle data into
 # tidy form for the project 'pathways-to-practice'
 
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working directory to the location of this file
+#setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # set working directory to the location of this file
 # source files and load packages
 # ------------------------------------------------------------------
-library(tidyverse)
+#library(tidyverse)
 
 # define functions
 # ------------------------------------------------------------------
@@ -221,18 +221,149 @@ GetPracticeVisSearchClean <- function(data){
 }
 
 
-###### Notes to add to dti-explore files
-# 3. boxplots and qqplots - assess for outliers and normality
-# --------------------------------------------------------------------------------
-# see https://ggplot2.tidyverse.org/reference/geom_boxplot.html
-# and https://ggplot2.tidyverse.org/reference/geom_qq.html
+get.coef.exps <- function(model){
+  # the input is a mixed model output from lmer
+  # assuming a function of y = exp(I+cond)*trial_num^beta
+  out <- data.frame(sub=rownames(coef(model)$sub),
+                    int=exp(coef(model)$sub[,3]),
+                    x=exp(coef(model)$sub[,1]),
+                    y=exp(coef(model)$sub[,2]))
+  out
+}
+
+fit.mod.sub.level.multidat <- function(data, sub){
+  # this function takes the dataframe labelled 'roll.mu.multi' and a 
+  # subject index and outputs a dataframe that contains
+  # the RMSE and parameters of the power and exponential functions
+  # fit to the practice data.
+  # NOTE: the trials regressor is scaled!
+  
+  fit.dat <- data[data$sub == sub, ]
+  # scale trial number and ditch unneeded columns
+  fit.dat$cond_trial = fit.dat$cond_trial/100
+  fit.dat <- fit.dat %>% select(-c(cond, task, acc)) %>% na.omit()  
+  
+  # fit power model (the output contains the fitted values)
+  pwr.fit <- lapply(levels(fit.dat$mult_cond), function(x) lm(log(move_mu)~log(cond_trial), data=fit.dat[fit.dat$mult_cond == x, ]))
+  exp.fit <- lapply(levels(fit.dat$mult_cond), function(x) lm(log(move_mu)~cond_trial, data=fit.dat[fit.dat$mult_cond == x, ]))
+  
+  # make a data frame of the parameters of interest
+  params <- data.frame(model=c("pwr", "pwr", "pwr", "exp", "exp", "exp"),
+                       cond=rep(c("S", "FM", "SM"), times=2),
+                       RMSE=c(sapply(1:3, function(x) sum(sqrt(pwr.fit[[x]]$residuals^2))),
+                              sapply(1:3, function(x) sum(sqrt(exp.fit[[x]]$residuals^2)))),
+                       int=c(sapply(1:3, function(x) pwr.fit[[x]]$coefficients[1]),
+                             sapply(1:3, function(x) exp.fit[[x]]$coefficients[1])),
+                       slp=c(sapply(1:3, function(x) pwr.fit[[x]]$coefficients[2]),
+                             sapply(1:3, function(x) exp.fit[[x]]$coefficients[2])))
+  params$sub = sub
+  params
+}
 
 
-# 4. exclude outliers
-# --------------------------------------------------------------------------------
-# use filter https://dplyr.tidyverse.org/reference/filter.html
+fit.mod.sub.level.VS <- function(data, sub){
+  # this function takes the dataframe labelled 'roll.mu.vis.search' and a 
+  # subject index and outputs a dataframe that contains
+  # the RMSE and parameters of the power and exponential functions
+  # fit to the practice data.
+  # NOTE: the trials regressor is scaled!
+  
+  fit.dat <- data[data$sub == sub, ]
+  # scale trial number and ditch unneeded columns
+  fit.dat$cond_trial = fit.dat$cond_trial/100
+  fit.dat <- fit.dat %>% na.omit()  
+  
+  # fit power model (the output contains the fitted values)
+  pwr.fit <- lapply(levels(fit.dat$cond), function(x) lm(log(move_mu)~log(cond_trial), data=fit.dat[fit.dat$cond == x, ]))
+  exp.fit <- lapply(levels(fit.dat$cond), function(x) lm(log(move_mu)~cond_trial, data=fit.dat[fit.dat$cond == x, ]))
+  
+  # make a data frame of the parameters of interest
+  params <- data.frame(model=c("pwr", "pwr", "pwr", "exp", "exp", "exp"),
+                       cond=rep(c("s8", "s12", "s16"), times=2),
+                       RMSE=c(sapply(1:3, function(x) sum(sqrt(pwr.fit[[x]]$residuals^2))),
+                              sapply(1:3, function(x) sum(sqrt(exp.fit[[x]]$residuals^2)))),
+                       int=c(sapply(1:3, function(x) pwr.fit[[x]]$coefficients[1]),
+                             sapply(1:3, function(x) exp.fit[[x]]$coefficients[1])),
+                       slp=c(sapply(1:3, function(x) pwr.fit[[x]]$coefficients[2]),
+                             sapply(1:3, function(x) exp.fit[[x]]$coefficients[2])))
+  params$sub = sub
+  params
+}
 
 
-# 5. Plot final distributions as a raincloud 
-# --------------------------------------------------------------------------------
-# example code here https://www-ncbi-nlm-nih-gov.ezproxy.library.uq.edu.au/pmc/articles/PMC6480976/
+plot.multi.fit <- function(data, params, sub){
+  # data = roll.mu.multi
+  # params = the fis from fit.mod.sub.level.multidat
+  # sub = the subject number for whom a plot is required
+  data = data[data$sub == sub, ]
+  params = params[params$sub == sub, ]
+  
+  # first predict the data for each model
+  data$pwr = NA
+  data$exp = NA
+  mult_conds = rep(levels(data$mult_cond), times=2)
+  funs = rep(c("pwr", "exp"), each=3)
+  p_conds = params$cond
+  
+  pred.pwr.condition <- function(x,y,z, data, params){
+    exp(params$int[params$model == y & params$cond == z]) * ((data$cond_trial[data$mult_cond == x]/100)^params$slp[params$model == y & params$cond == z])
+  }
+  
+  pred.exp.condition <- function(x,y,z, data, params){
+    exp(params$int[params$model == y & params$cond == z]) * exp((data$cond_trial[data$mult_cond == x]/100)*params$slp[params$model == y & params$cond == z])
+  }
+  
+  for (i in 1:3) data$pwr[data$mult_cond == mult_conds[i]] = pred.pwr.condition(mult_conds[i], "pwr", p_conds[i], data, params)
+  for (i in 1:3) data$exp[data$mult_cond == mult_conds[i]] = pred.exp.condition(mult_conds[i], "exp", p_conds[i], data, params)
+  
+  # now plot the data
+  pwr.p <- data %>% select(-c(cond, task, acc)) %>%
+                na.omit() %>% ggplot(aes(x=cond_trial, y=move_mu, group=mult_cond, color=mult_cond)) +
+                geom_point() +
+                geom_line(aes(x=cond_trial, y=pwr, group=mult_cond, color=mult_cond)) 
+  
+  # now plot the data
+  exp.p <- data %>% select(-c(cond, task, acc)) %>%
+                na.omit() %>% ggplot(aes(x=cond_trial, y=move_mu, group=mult_cond, color=mult_cond)) +
+                geom_point() +
+                geom_line(aes(x=cond_trial, y=exp, group=mult_cond, color=mult_cond))
+  grid.arrange(pwr.p, exp.p)
+}
+
+plot.VS.fit <- function(data, params, sub){
+  # data = roll.mu.multi
+  # params = the fis from fit.mod.sub.level.multidat
+  # sub = the subject number for whom a plot is required
+  data = data[data$sub == sub, ]
+  params = params[params$sub == sub, ]
+  
+  # first predict the data for each model
+  data$pwr = NA
+  data$exp = NA
+  conds = rep(levels(data$cond), times=2)
+  funs = rep(c("pwr", "exp"), each=3)
+  p_conds = params$cond
+  
+  pred.pwr.condition <- function(x,y,z, data, params){
+    exp(params$int[params$model == y & params$cond == z]) * ((data$cond_trial[data$cond == x]/100)^params$slp[params$model == y & params$cond == z])
+  }
+  
+  pred.exp.condition <- function(x,y,z, data, params){
+    exp(params$int[params$model == y & params$cond == z]) * exp((data$cond_trial[data$cond == x]/100)*params$slp[params$model == y & params$cond == z])
+  }
+  
+  for (i in 1:3) data$pwr[data$cond == conds[i]] = pred.pwr.condition(conds[i], "pwr", p_conds[i], data, params)
+  for (i in 1:3) data$exp[data$cond == conds[i]] = pred.exp.condition(conds[i], "exp", p_conds[i], data, params)
+  
+  # now plot the data
+  pwr.p <- data %>% na.omit() %>% ggplot(aes(x=cond_trial, y=move_mu, group=cond, color=cond)) +
+                geom_point() +
+                geom_line(aes(x=cond_trial, y=pwr, group=cond, color=cond)) 
+  
+  # now plot the data
+  exp.p <- data %>% na.omit() %>% ggplot(aes(x=cond_trial, y=move_mu, group=cond, color=cond)) +
+                geom_point() +
+                geom_line(aes(x=cond_trial, y=exp, group=cond, color=cond))
+  grid.arrange(pwr.p, exp.p)
+}
+
