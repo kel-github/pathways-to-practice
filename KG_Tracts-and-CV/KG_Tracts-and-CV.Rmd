@@ -135,6 +135,11 @@ We seek to understand whether our scores on the tract factors (cortical to cauda
 # first fit the models
 CV.mds <- lapply(unique(reg.dat$cog_cond), function(x) glm(CV ~ cort_to_CN*cort_to_Put*group*sess+RT, data=reg.dat[reg.dat$cog_cond == x,]))
 
+# save the model co-efficients as a csv
+# first make the coefficients into a csv
+cofs <- data.frame(do.call(rbind, lapply(CV.mds, function(x) summary(x)$coefficients)))
+cofs$cog_cond <- rep(c("s", "FM", "SM"), each=17)
+write.csv(cofs, '../cleaned-data/tract-cv-glm-orig-coefs.csv', row.names=FALSE)
 ```
 
 <br>
@@ -377,6 +382,36 @@ interact_plot(s2FM.mod.c[[2]], pred=cort_to_CN, modx=sess, mod2=s2FM, plot.point
 ```
 
 <br><br>
+
+Now, I run only the pre-session data, to see if strategy interacts with cort to CN to predict performance at the pre-session
+
+```{r}
+s2FM.mod.pre <- lapply(c("FM","SM"), function(x) glm(CV ~ cort_to_CN:s2FM, data=reg.dat[reg.dat$cog_cond == x & reg.dat$sess == "Pre",]))
+summary(s2FM.mod.pre[[1]])
+
+```
+```{r, fig.align="center", fig.width=6, fig.height=4, fig.cap="FM ~ cort_to_CN x s2FM interaction for the pre-session (mu-1SD, mu, mu+1SD)"}
+
+interact_plot(s2FM.mod.pre[[1]], pred=cort_to_CN, modx=s2FM, plot.points=TRUE, interval=TRUE,
+              colors = wes_palette("IsleofDogs1")[c(1,4)])
+
+```
+
+<br><br>
+
+and now looking at task 2, which is not significant:
+
+```{r}
+summary(s2FM.mod.pre[[2]])
+```
+
+```{r, fig.align="center", fig.width=6, fig.height=4, fig.cap="SM ~ cort_to_CN x s2FM interaction for the pre-session (mu-1SD, mu, mu+1SD)"}
+
+interact_plot(s2FM.mod.pre[[2]], pred=cort_to_CN, modx=s2FM, plot.points=TRUE, interval=TRUE,
+              colors = wes_palette("IsleofDogs1")[c(1,4)])
+
+
+```
 
 # Conclusion
 ***
