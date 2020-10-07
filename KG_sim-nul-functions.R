@@ -41,7 +41,9 @@ narrow.tracts <- function(fpath){
                       c("Inferior_Parietal_gyrus_Right",               "Lenticular_nucleus_putamen_Right"))
   usd.idxs <- lapply(used.tracts, function(x) c(which(tract.names==x[1]), which(tract.names==x[2])))
   for (i in 1:length(usd.idxs)) idx[usd.idxs[[i]][1],usd.idxs[[i]][2]] <- FALSE
+  for (i in 1:length(usd.idxs)) idx[usd.idxs[[i]][2],usd.idxs[[i]][1]] <- FALSE
   diag(idx) <- FALSE
+  idx[lower.tri(idx)] <- FALSE
   idx # now I can take all the TRUES of idx and use them to randomly select tracts in the next step
 }
 

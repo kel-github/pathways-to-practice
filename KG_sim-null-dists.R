@@ -18,7 +18,7 @@ Ntracts = 16 # number of tracts to select
 ################################################################################################
 fpath <- '~/Dropbox/QBI/pathways-to-practice/dti-data/'
 idx <- narrow.tracts(fpath)
-# 3175 connections remain
+# 1580 connections remain
 do.select.and.regress <- function(idx){
   # this function will run 1 full
   data <- select.tracts(Ntracts, idx)
