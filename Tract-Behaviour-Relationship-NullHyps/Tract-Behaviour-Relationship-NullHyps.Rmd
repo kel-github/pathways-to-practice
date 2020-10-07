@@ -1,0 +1,158 @@
+---
+title: "Assessing the probability that randomly selected tracts (as measured with DTI) will correlate with behaviour"
+author: "[Kelly Garner](https://github.com/kel-github)"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+mail: "getkellygarner@gmail.com"
+output:
+  epuRate::epurate:
+    toc: TRUE
+    number_sections: FALSE
+    code_folding: "hide"
+---
+
+
+<br><br>
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(rmarkdown)    # You need this library to run this template.
+library(epuRate)      # Install with devtools: install_github("holtzy/epuRate", force=TRUE)
+library(knitr)
+library(cowplot)
+library(wesanderson)
+```
+
+# Overview and Aims
+
+***
+
+> We first sought to determine whether shared variance underlying FA measures of striatal-cortical tracts of interest predicted behvaioural variability when people perform multiple tasks at once. Multiple lab members were working on this project and each selected their own tracts of interest. I noticed that regardless of the tracts selected, significant correlations between FA factors and behavioural variability were observed. I therefore sought to test whether a significant relationship would be found, regardless of the specific tracts that were selected - i.e. do the tracts matter, or does shared variance underlying FA measures of brain structure correspond to behaviour in general? I found that regardless of which tracts are selected, small correlations are observed between FA factors and behaviour, and that our previous observations lie within the range that could be expected had the tract data been selected at random. 
+
+<br><br>
+
+# Method
+
+***
+
+The goal was to generate distributions of the beta co-efficients and p-values that would be observed when sets of tracts were randomly selected and regressed against our behavioural measure of variability, using the regression model defined [here](https://htmlpreview.github.io/?https://github.com/kel-github/pathways-to-practice/blob/master/KG_Tracts-and-CV/KG_Tracts-and-CV.html). 
+
+To achieve this, I ran 1000 permutations of the following procedure: 
+
+* First I removed our _a priori_ tracts of interest from the tract data. I also removed tracts for which there is low prevalance across participants, which would have resulted in preclusion from our study given our sample size. This resulted in removal of all tracts for which > 10 % of participants returned a null value. A total of 3175 tracts remained.
+
+* Next, I randonly selected 16 tracts (as this is the number we used in our original analysis) without replacement, and in accordance with the EFA presented [here](https://htmlpreview.github.io/?https://github.com/kel-github/pathways-to-practice/blob/master/KG-EFA-tutorial-tmplt/KG-EFA-tutorial-tmplt.html) I performed a dimension reduction (to 2 factors) using a promax rotation. I then computed participants scores on each of the two factors, henceforth referred to as Factor A and Factor B.
+
+
+* These two factors were then entered into our original regression model, defined as: 
+
+<br>
+
+$y = \beta FA * \beta FB * \beta G * \beta S + \beta RT$
+
+<br>
+
+where FA = factor A, FB = factor B, G = group, S = session, RT = median response time. The resulting beta-coefficients and p-values were retained from each permutation. (Note: a regression model was fit to each multitask condition seperately [s=single task, FM = first multitask, SM = second multitask]).
+
+<br>
+
+# Results
+
+***
+
+```{r}
+# first I load libraries and organise data
+# load packages and source required files
+library(tidyverse)
+library(wesanderson)
+library(cowplot)
+##################################################################################################
+# define previous results for comparison
+orig.results <- read.csv('../cleaned-data/tract-cv-glm-orig-coefs.csv')
+nulls <- read.csv('../cleaned-data/null-dists.csv')
+
+# first, select only the terms of interest
+terms2inc <- as.character(unique(nulls$term)[c(2,3,7,8,9,10,11,13,14,15,16,17)])
+orig.results$term <- nulls$term[1:(17*3)]
+nulls <- nulls %>% filter(term %in% terms2inc)
+orig.results <- orig.results %>% filter(term %in% terms2inc)
+orig.results$sig <- as.factor(orig.results$Pr...t.. < .05)
+```
+
+```{r}
+# define function to make plots
+plot.info <- function(cc, dv, data, model.results, model.dv){
+  # cc = cog cond
+  # dv = dv of interest (either coef or p from data)
+  # data = nulls
+  # model.results = coefs and ps from original models
+  # model.dv = the variable you want from the data frame of the original model results
+  
+  # first filter model results
+  mr <- model.results %>% filter(cog_cond==cc)
+  mr$y = .05
+  data %>% filter(cog_cond == cc) %>%
+    ggplot(aes(x=get(dv), fill=term, colour=term)) +
+    geom_density(alpha=0.2) +
+    facet_wrap(.~term) +
+    theme_cowplot() +
+    theme(legend.position = 'none') +
+    xlab(dv) +
+    ggtitle(cc) +
+    geom_point(data=mr, 
+               mapping=aes(x=get(model.dv), y=y, shape=sig)) +
+    facet_wrap(.~term)             
+}
+
+```
+
+For each multitasking condition (s, FM & SM) I show the beta coefficients and p-values obtained over 1000 permutations, for each model term that includes either Factor A and/or Factor B. The actual observed co-efficients and p-values are annotated as points. Circles denote results that were not statistically significant and triangles denote observations that were statistically significant.
+
+<br>
+
+I start with the results from the FM condition, which is the first condition for which we observed a significant interaction between our _a priori_ defined FA factor and behaviour.
+
+```{r, out.width="800px", fig.show='hold', out.width='50%', fig.align='center', fig.cap="Showing the beta coefficients (left panel) and p-values (right panel) observed over 1000 permutations for the FM condition"}
+
+par(mar=c(.4,.4,.1,.1))
+plot.info(cc='FM', dv='coef', data=nulls, model.results=orig.results, model.dv='Estimate')
+plot.info(cc='FM', dv='p', data=nulls, model.results=orig.results, model.dv='Pr...t..')
+
+
+```
+
+<br>
+
+There are two particularly interesting points to note here. The first is that even though the tracts were randomly selected, the resulting densities show a small correlation with behaviour, i.e. the densities are not centred around 0. This is also reflected in the observed p-values. It is clear that factor A, the factor that explains most variance in the randomly selected tracts, does correlate with observed behaviour, i.e. the p-values are not uniformly distributed, which is what we would expect in the presence of a null effects.
+
+This pattern is also observed in the SM condition; the second condition in which we observed statistically significant effects.
+
+```{r, out.width="800px", fig.show='hold', out.width='50%', fig.align='center', fig.cap="Showing the beta coefficients (left panel) and p-values (right panel) observed over 1000 permutations for the SM condition"}
+
+par(mar=c(.4,.4,.1,.1))
+plot.info(cc='SM', dv='coef', data=nulls, model.results=orig.results, model.dv='Estimate')
+plot.info(cc='SM', dv='p', data=nulls, model.results=orig.results, model.dv='Pr...t..')
+
+
+```
+
+<br>
+
+We did not observe any statistically significant effects in the s condition, which fits with the pattern of data presented below. Indeed, the coefficient and p-value densities reflect more closely what would be expected under a null hypothesis of no relationship.
+
+
+```{r, out.width="800px", fig.show='hold', out.width='50%', fig.align='center', fig.cap="Showing the beta coefficients (left panel) and p-values (right panel) observed over 1000 permutations for the s condition"}
+
+par(mar=c(.4,.4,.1,.1))
+plot.info(cc='s', dv='coef', data=nulls, model.results=orig.results, model.dv='Estimate')
+plot.info(cc='s', dv='p', data=nulls, model.results=orig.results, model.dv='Pr...t..')
+
+
+```
+
+<br>
+
+# Conclusions
+
+***
+
+Regardless of which tracts we had selected for further study, it is highly likely we would have observed a significant association between the shared variance underlying the FA values from each tract and our measure of performance variability during multitasking.
