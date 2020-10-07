@@ -60,11 +60,7 @@ where FA = factor A, FB = factor B, G = group, S = session, RT = median response
 ***
 
 ```{r}
-# first I load libraries and organise data
-# load packages and source required files
-library(tidyverse)
-library(wesanderson)
-library(cowplot)
+# first I organise data
 ##################################################################################################
 # define previous results for comparison
 orig.results <- read.csv('../cleaned-data/tract-cv-glm-orig-coefs.csv')
